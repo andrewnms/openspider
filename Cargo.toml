@@ -1,0 +1,53 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/openspider-core",
+    "crates/openspider-mcp",
+    "crates/openspider-bin",
+    "desktop/src-tauri",
+]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["kkodo"]
+repository = "https://github.com/kkodo/openspider"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Async + HTTP
+tokio = { version = "1.40", features = ["full"] }
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Storage
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "chrono", "uuid"] }
+
+# Vault file watching + parsing
+notify = "6"
+gray_matter = "0.2"
+pulldown-cmark = "0.12"
+
+# Misc
+async-trait = "0.1"
+base64 = "0.22"
+cron = "0.12"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+directories = "5"
+
+# Internal — OpenSpider crates (kbrain was the working name through v1.0)
+openspider-core = { path = "crates/openspider-core" }
+openspider-mcp  = { path = "crates/openspider-mcp" }

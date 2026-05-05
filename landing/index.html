@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kbrain — hire an agent that knows your business as well as you do</title>
+<meta name="description" content="kbrain reads your chats, learns your voice, and does the boring parts of running a business — posting, replying, scheduling — exactly the way you would." />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; }
+  html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .grain { background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 0); background-size: 24px 24px; }
+  .glow { box-shadow: 0 0 0 1px rgba(120,120,255,.2), 0 24px 60px -16px rgba(99,102,241,.35); }
+  .bubble-l { border-radius: 18px 18px 18px 4px; }
+  .bubble-r { border-radius: 18px 18px 4px 18px; }
+  .phone {
+    width: 320px; border-radius: 44px; padding: 12px;
+    background: linear-gradient(180deg,#1f2128,#0f1015);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .phone-screen {
+    border-radius: 32px; overflow: hidden; background: #ece5dd;
+    height: 580px; position: relative;
+  }
+  .wa-bg {
+    background-color: #ece5dd;
+    background-image:
+      radial-gradient(rgba(0,0,0,.04) 1px, transparent 0);
+    background-size: 14px 14px;
+  }
+  .gradient-text {
+    background: linear-gradient(120deg,#6366f1 0%,#a855f7 50%,#ec4899 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .pulse-dot::after {
+    content: ''; display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: #22c55e; margin-left: 8px;
+    box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+    70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  .hand-line { stroke-dasharray: 4 4; }
+</style>
+</head>
+<body class="bg-white text-zinc-900 antialiased">
+
+<!-- ─────── nav ─────── -->
+<header class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 grid place-items-center text-white font-black">k</div>
+    <span class="font-bold text-lg">kbrain</span>
+    <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 mono">v1.0</span>
+  </div>
+  <nav class="hidden md:flex items-center gap-8 text-sm text-zinc-700">
+    <a href="#story"   class="hover:text-zinc-900">The story</a>
+    <a href="#how"     class="hover:text-zinc-900">How it works</a>
+    <a href="#agents"  class="hover:text-zinc-900">Agents</a>
+    <a href="#why"     class="hover:text-zinc-900">Why kbrain</a>
+    <a href="https://github.com/kkodo/kbrain" class="hover:text-zinc-900">GitHub</a>
+  </nav>
+  <a href="#install" class="text-sm font-medium px-4 py-2 rounded-full bg-zinc-900 text-white hover:bg-zinc-800">Get started</a>
+</header>
+
+<!-- ─────── hero ─────── -->
+<section class="relative overflow-hidden">
+  <div class="absolute inset-0 -z-10 grain"></div>
+  <div class="absolute -z-10 top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-gradient-to-br from-indigo-100 via-fuchsia-50 to-transparent rounded-full blur-3xl opacity-70"></div>
+
+  <div class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid lg:grid-cols-2 gap-12 items-center">
+    <div>
+      <div class="inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+        For freelancers, solo operators, small business owners
+      </div>
+      <h1 class="text-5xl md:text-6xl font-black leading-[1.05] tracking-tight">
+        Hire an agent that knows your business
+        <span class="gradient-text">as well as you do.</span>
+      </h1>
+      <p class="mt-6 text-lg text-zinc-600 max-w-xl leading-relaxed">
+        kbrain reads your chats, learns your voice, and does the boring parts of running a business —
+        posting, replying, scheduling — exactly the way you would.
+        <br><br>
+        Message it on WhatsApp like you'd message an employee. Your data stays on your machine.
+      </p>
+
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <a href="#install" class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-zinc-900 text-white font-medium hover:bg-zinc-800">
+          Get started
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#story" class="inline-flex items-center gap-2 px-5 py-3 text-zinc-700 hover:text-zinc-900">
+          See how Mofu uses it
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="mt-10 flex items-center gap-6 text-xs text-zinc-500">
+        <div class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+          Your data stays local
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+          Free runtime (BYO LLM)
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+          Open source
+        </div>
+      </div>
+    </div>
+
+    <!-- WhatsApp phone mockup -->
+    <div class="flex justify-center lg:justify-end">
+      <div class="phone glow">
+        <div class="phone-screen wa-bg flex flex-col">
+          <!-- header -->
+          <div class="bg-emerald-700 text-white px-4 py-3 flex items-center gap-3">
+            <button class="text-white/80">←</button>
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 grid place-items-center font-bold">k</div>
+            <div class="flex-1">
+              <div class="font-medium text-sm leading-tight">kbrain<span class="pulse-dot"></span></div>
+              <div class="text-xs text-white/70">online</div>
+            </div>
+            <span class="text-lg">⋮</span>
+          </div>
+          <!-- chat -->
+          <div class="flex-1 px-3 py-3 space-y-2 overflow-hidden">
+            <div class="text-center text-[10px] text-zinc-500 mb-1">Today</div>
+
+            <div class="flex justify-end">
+              <div class="bubble-r bg-emerald-100 text-zinc-800 px-3 py-2 max-w-[80%] text-sm shadow-sm">
+                Hey we need to start posting again. I can only handle 4 clients this month. Can you handle this?
+                <div class="text-[10px] text-zinc-500 text-right mt-0.5">9:42 AM ✓✓</div>
+              </div>
+            </div>
+
+            <div class="flex justify-start">
+              <div class="bubble-l bg-white text-zinc-800 px-3 py-2 max-w-[80%] text-sm shadow-sm">
+                Got it. I'll:
+                <ul class="list-disc list-inside mt-1 text-xs text-zinc-700 space-y-0.5">
+                  <li>Post on FB at 9am ("4 slots open")</li>
+                  <li>Reply DMs in your tone (quotes, slot status)</li>
+                  <li>Stop after 4 deposits, redirect rest to next month</li>
+                </ul>
+                <div class="text-[10px] text-zinc-500 text-right mt-1">9:42 AM</div>
+              </div>
+            </div>
+
+            <div class="flex justify-start">
+              <div class="bubble-l bg-white text-zinc-800 px-3 py-2 max-w-[80%] text-sm shadow-sm">
+                Posted. 📣<br>
+                7 DMs already, 2 deposits in (Aime ₱2,300, Reze ₱2,500). Want me to confirm Reze rush request?
+                <div class="text-[10px] text-zinc-500 text-right mt-0.5">10:14 AM</div>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <div class="bubble-r bg-emerald-100 text-zinc-800 px-3 py-2 max-w-[80%] text-sm shadow-sm">
+                yeah confirm if before friday she's good
+                <div class="text-[10px] text-zinc-500 text-right mt-0.5">10:15 AM ✓✓</div>
+              </div>
+            </div>
+
+            <div class="flex justify-start">
+              <div class="bubble-l bg-white text-zinc-800 px-3 py-2 max-w-[80%] text-sm shadow-sm">
+                Done. Reze deadline Thursday, deposit confirmed. ✅
+                <div class="text-[10px] text-zinc-500 text-right mt-0.5">10:15 AM</div>
+              </div>
+            </div>
+          </div>
+          <!-- input -->
+          <div class="bg-zinc-50 px-3 py-2 flex items-center gap-2">
+            <div class="flex-1 bg-white rounded-full px-4 py-2 text-sm text-zinc-400">Message</div>
+            <div class="w-9 h-9 rounded-full bg-emerald-600 grid place-items-center text-white">▶</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── the story ─────── -->
+<section id="story" class="border-t border-zinc-100 bg-zinc-50/40">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="text-xs uppercase tracking-widest text-indigo-600 font-bold mb-3">The story</div>
+    <h2 class="text-4xl md:text-5xl font-black tracking-tight max-w-3xl">Meet Mofu. She styles wigs for cosplayers.</h2>
+
+    <div class="grid lg:grid-cols-3 gap-8 mt-12">
+      <div class="lg:col-span-1">
+        <div class="aspect-[4/5] rounded-3xl bg-gradient-to-br from-fuchsia-200 via-pink-100 to-amber-100 grid place-items-center text-7xl">
+          🎀
+        </div>
+        <div class="mt-4 text-sm text-zinc-600 italic">"I love the craft. I hate replying to the same DM 14 times a day."</div>
+      </div>
+
+      <div class="lg:col-span-2 space-y-6 text-zinc-700 leading-relaxed">
+        <p class="text-lg">
+          Two years in. <span class="font-semibold text-zinc-900">200+ clients</span>, <span class="font-semibold text-zinc-900">2,600+ messages a month</span>.
+          Same questions every day:
+        </p>
+        <div class="grid sm:grid-cols-3 gap-3 text-sm">
+          <div class="rounded-xl border border-zinc-200 bg-white p-4">
+            <div class="text-xs text-zinc-500 mb-1">Inbox, every hour</div>
+            <div class="font-medium">"How much for Stelle styling po?"</div>
+          </div>
+          <div class="rounded-xl border border-zinc-200 bg-white p-4">
+            <div class="text-xs text-zinc-500 mb-1">Inbox, every day</div>
+            <div class="font-medium">"Slots open this month?"</div>
+          </div>
+          <div class="rounded-xl border border-zinc-200 bg-white p-4">
+            <div class="text-xs text-zinc-500 mb-1">Inbox, weekly</div>
+            <div class="font-medium">"Pwede po rush by Friday?"</div>
+          </div>
+        </div>
+
+        <p>
+          She was burning out. She stopped posting. Lost momentum.
+          Started turning away repeat customers because she couldn't keep up with new inquiries.
+        </p>
+
+        <div class="mt-8 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-fuchsia-50 border border-indigo-100">
+          <div class="text-sm font-semibold text-indigo-900 mb-2">Then she trained kbrain on her business chats.</div>
+          <p class="text-zinc-700">
+            kbrain learned her pricing structure, the way she talks to clients, the platforms she uses (GCash, Lalamove),
+            the workflow from inquiry → quote → deposit → styling → shipping. It started replying in her voice.
+            She started posting again. <span class="font-semibold text-zinc-900">Booked out by mid-month.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── what kbrain does, in detail ─────── -->
+<section class="bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="text-xs uppercase tracking-widest text-indigo-600 font-bold mb-3">What kbrain actually does</div>
+    <h2 class="text-3xl md:text-4xl font-black tracking-tight max-w-3xl mb-12">A morning in Mofu's business, with kbrain running.</h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <!-- conversation 1: customer DM, kbrain replies as Mofu -->
+      <div class="rounded-3xl border border-zinc-200 p-6 bg-zinc-50/50">
+        <div class="flex items-center gap-2 text-xs text-zinc-500 mb-4">
+          <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium mono">FB MESSENGER</span>
+          <span>· auto-replied in 12s</span>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-start">
+            <div class="bubble-l bg-zinc-100 px-3 py-2 max-w-[85%] text-sm">
+              <div class="text-xs text-zinc-500 mb-0.5">Yumi Sien</div>
+              Hi po! Magkano styling for Reze (CSM)? Gusto ko sana before Halloween.
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="bubble-r bg-emerald-100 px-3 py-2 max-w-[85%] text-sm">
+              <div class="text-xs text-emerald-700 mb-0.5 font-medium">Mofu (kbrain)</div>
+              Hi po! ₱2,500 for Reze styling, includes the cuts and shaping. ₱500 add-on if you want the magnetic ahoge. October slots are tight, we still have 1 left for the 3rd week. Want me to reserve? Need 50% down (GCash) and your wig shipped to me by Sept 30 po. 💕
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-zinc-500">
+          Pulled price from past 14 Reze quotes. Used "po" naturally because Mofu's chats use it 92% of the time. Flagged the slot scarcity from the live calendar.
+        </div>
+      </div>
+
+      <!-- conversation 2: kbrain summarizes -->
+      <div class="rounded-3xl border border-zinc-200 p-6 bg-zinc-50/50">
+        <div class="flex items-center gap-2 text-xs text-zinc-500 mb-4">
+          <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium mono">WHATSAPP — kbrain</span>
+          <span>· 8:00 AM daily brief</span>
+        </div>
+        <div class="bubble-l bg-white border border-zinc-200 px-4 py-3 text-sm shadow-sm">
+          Good morning! Yesterday:
+          <ul class="list-disc list-inside mt-1 text-zinc-700 space-y-0.5">
+            <li>11 inquiries replied (4 quotes drafted, 7 generic info)</li>
+            <li>2 new deposits: Aime (₱2,300), Reze (₱2,500) ✅</li>
+            <li>1 needs you: <span class="font-semibold">Yumi asking for rush by Oct 25 — we have wiggle room but you decide</span></li>
+            <li>Slots used: <span class="font-semibold">3 / 4</span></li>
+          </ul>
+          <div class="mt-2 text-zinc-600 italic">Want me to confirm Yumi rush?</div>
+        </div>
+        <div class="mt-4 text-xs text-zinc-500">
+          Generated by the Daily Brief agent. Reads from your DM history, deposit ledger, and calendar. Knows your "needs you" rules from how you've handled rush requests before.
+        </div>
+      </div>
+
+      <!-- conversation 3: kbrain posts -->
+      <div class="rounded-3xl border border-zinc-200 p-6 bg-zinc-50/50">
+        <div class="flex items-center gap-2 text-xs text-zinc-500 mb-4">
+          <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium mono">FB POST</span>
+          <span>· scheduled by Slot Status Poster</span>
+        </div>
+        <div class="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-fuchsia-300 to-pink-300 grid place-items-center text-xl">🎀</div>
+            <div>
+              <div class="font-semibold text-sm">Mofu Wig Styling</div>
+              <div class="text-xs text-zinc-500">9:00 AM · 🌐</div>
+            </div>
+          </div>
+          <p class="text-sm leading-relaxed">
+            October slots open na po! 4 slots lang ulit since I want to keep quality high. 🎀<br><br>
+            Pricing range: ₱1,800 – ₱5,000 depending on the character. Rush available pero limited. DM po if interested! 💕<br><br>
+            #cosplay #wigstylingph #commission
+          </p>
+          <div class="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+            <span>👍 ❤️ · 47</span>
+            <span>14 comments</span>
+            <span>3 shares</span>
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-zinc-500">
+          Posted in Mofu's voice (the "po", the heart emojis, the slot scarcity). Comments are queued for the Inquiry Auto-Quote agent to draft replies.
+        </div>
+      </div>
+
+      <!-- conversation 4: payment reminder -->
+      <div class="rounded-3xl border border-zinc-200 p-6 bg-zinc-50/50">
+        <div class="flex items-center gap-2 text-xs text-zinc-500 mb-4">
+          <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium mono">FB MESSENGER</span>
+          <span>· Payment Reminder agent · 48h after invoice</span>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-end">
+            <div class="bubble-r bg-emerald-100 px-3 py-2 max-w-[85%] text-sm">
+              <div class="text-xs text-emerald-700 mb-0.5 font-medium">Mofu (kbrain)</div>
+              Hi po! Just a gentle nudge — your Stelle wig is finished and ready to ship 💕 Remaining balance is ₱3,550. GCash po, will send the QR after. No rush, just wanted to make sure it didn't get lost in your inbox!
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-zinc-500">
+          Tone matches Mofu's actual reminder messages: warm, low-pressure, never accusatory. The agent learned that pattern from her past 30 invoice follow-ups.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── how it works ─────── -->
+<section id="how" class="bg-zinc-950 text-white relative overflow-hidden">
+  <div class="absolute inset-0 -z-10 opacity-30 grain"></div>
+  <div class="absolute -z-10 top-0 right-1/4 w-[600px] h-[600px] bg-fuchsia-600 rounded-full blur-[160px] opacity-20"></div>
+  <div class="absolute -z-10 bottom-0 left-1/4 w-[500px] h-[500px] bg-indigo-600 rounded-full blur-[160px] opacity-20"></div>
+
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="text-xs uppercase tracking-widest text-indigo-400 font-bold mb-3">How it works</div>
+    <h2 class="text-4xl md:text-5xl font-black tracking-tight max-w-3xl">Four steps. One afternoon.</h2>
+    <p class="mt-4 text-zinc-300 max-w-2xl">No SaaS signup. No vendor lock-in. kbrain runs as a single binary on your machine. The vault is plain markdown files.</p>
+
+    <div class="mt-14 grid md:grid-cols-4 gap-6">
+      <div class="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur">
+        <div class="w-10 h-10 rounded-lg bg-indigo-500/20 grid place-items-center mb-4 mono font-bold">1</div>
+        <h3 class="font-bold text-lg">Connect your data</h3>
+        <p class="mt-2 text-sm text-zinc-300 leading-relaxed">
+          Drop your chat exports (Facebook, WhatsApp, Telegram) into kbrain. It builds a structured map of clients, conversations, prices, deadlines.
+        </p>
+      </div>
+      <div class="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur">
+        <div class="w-10 h-10 rounded-lg bg-fuchsia-500/20 grid place-items-center mb-4 mono font-bold">2</div>
+        <h3 class="font-bold text-lg">Train your agents</h3>
+        <p class="mt-2 text-sm text-zinc-300 leading-relaxed">
+          kbrain analyzes your past replies and proposes agents to hire. You review them like a hiring manager — say yes, no, or edit the brief.
+        </p>
+      </div>
+      <div class="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur">
+        <div class="w-10 h-10 rounded-lg bg-pink-500/20 grid place-items-center mb-4 mono font-bold">3</div>
+        <h3 class="font-bold text-lg">Plug in channels</h3>
+        <p class="mt-2 text-sm text-zinc-300 leading-relaxed">
+          Connect WhatsApp, Facebook, email. Agents listen on those channels and reply in your voice. You stay in the loop on edge cases only.
+        </p>
+      </div>
+      <div class="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur">
+        <div class="w-10 h-10 rounded-lg bg-amber-400/20 grid place-items-center mb-4 mono font-bold">4</div>
+        <h3 class="font-bold text-lg">Operate by message</h3>
+        <p class="mt-2 text-sm text-zinc-300 leading-relaxed">
+          Talk to kbrain like an employee. "Take 4 commissions this month." "Stop replying to old leads." It does it. Reports back.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── agents you can hire ─────── -->
+<section id="agents" class="bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="text-xs uppercase tracking-widest text-indigo-600 font-bold mb-3">The agents you can hire</div>
+    <h2 class="text-4xl md:text-5xl font-black tracking-tight max-w-3xl mb-4">A team of specialists. Trained on your business.</h2>
+    <p class="text-zinc-600 max-w-2xl">Each agent is a small JavaScript program with full read/write access to your workspace. You can edit them, fork them, or hire new ones from the marketplace.</p>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-gradient-to-br from-white to-indigo-50/40">
+        <div class="text-3xl mb-3">💬</div>
+        <h3 class="font-bold">Inquiry Auto-Quote</h3>
+        <p class="text-sm text-zinc-600 mt-2">Drafts replies to new DMs in your voice with the right price, slot status, and next step. Human approves, then it sends.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">trigger: new DM</span>
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">risk: low</span>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-gradient-to-br from-white to-fuchsia-50/40">
+        <div class="text-3xl mb-3">📣</div>
+        <h3 class="font-bold">Slot Status Poster</h3>
+        <p class="text-sm text-zinc-600 mt-2">Posts to Facebook on your schedule with current availability — written in your tone, complete with your usual hashtags.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">trigger: weekly cron</span>
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">risk: low</span>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-gradient-to-br from-white to-pink-50/40">
+        <div class="text-3xl mb-3">💸</div>
+        <h3 class="font-bold">Payment Reminder</h3>
+        <p class="text-sm text-zinc-600 mt-2">Pings clients with overdue balances at exactly the right cadence — never spammy, always polite, always in your voice.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">trigger: 48h after invoice</span>
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">risk: medium</span>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-gradient-to-br from-white to-amber-50/40">
+        <div class="text-3xl mb-3">📊</div>
+        <h3 class="font-bold">Project Tracker</h3>
+        <p class="text-sm text-zinc-600 mt-2">Watches your inbox and updates the project pipeline as deals move. No more forgetting which client is at which stage.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">trigger: row update</span>
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">risk: low</span>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-gradient-to-br from-white to-emerald-50/40">
+        <div class="text-3xl mb-3">📨</div>
+        <h3 class="font-bold">Daily Brief</h3>
+        <p class="text-sm text-zinc-600 mt-2">Morning summary on WhatsApp: who needs you, what closed, what's stuck. Two minutes to triage your whole day.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">trigger: 8 AM cron</span>
+          <span class="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 mono">risk: low</span>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border-2 border-dashed border-zinc-300 p-6 grid place-items-center text-center bg-zinc-50/50">
+        <div>
+          <div class="text-3xl mb-3">+</div>
+          <h3 class="font-bold">Hire your own</h3>
+          <p class="text-sm text-zinc-600 mt-2">Describe the task in plain English. kbrain drafts the agent. You review and edit before hiring.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── why kbrain ─────── -->
+<section id="why" class="bg-zinc-50 border-t border-zinc-100">
+  <div class="max-w-6xl mx-auto px-6 py-24">
+    <div class="text-xs uppercase tracking-widest text-indigo-600 font-bold mb-3">Why kbrain (vs everything else)</div>
+    <h2 class="text-4xl md:text-5xl font-black tracking-tight max-w-3xl mb-12">Built for the person who'd rather make wigs than reply to "magkano po?"</h2>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-white">
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 rounded-lg bg-emerald-100 grid place-items-center text-xl shrink-0">🏠</div>
+          <div>
+            <h3 class="font-bold">Your data, on your machine</h3>
+            <p class="text-sm text-zinc-600 mt-1.5 leading-relaxed">
+              Vault is plain markdown + YAML files. Edit in Obsidian. Back up with <span class="mono text-xs">tar</span>. Walk away whenever.
+              No vendor's database holds your business hostage.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-white">
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-100 grid place-items-center text-xl shrink-0">⚡</div>
+          <div>
+            <h3 class="font-bold">Free runtime, BYO LLM</h3>
+            <p class="text-sm text-zinc-600 mt-1.5 leading-relaxed">
+              Most agent runs are compiled JS — basically free. Only the LLM-using parts cost (Groq, OpenAI, Claude, Ollama, your pick).
+              No paid gateway tax.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-white">
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 rounded-lg bg-fuchsia-100 grid place-items-center text-xl shrink-0">🎙️</div>
+          <div>
+            <h3 class="font-bold">Your voice, not generic AI-speak</h3>
+            <p class="text-sm text-zinc-600 mt-1.5 leading-relaxed">
+              Trained on YOUR chats. The agent's "po" rate matches your "po" rate. Your emojis. Your scarcity language.
+              Customers don't notice the handoff.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-zinc-200 p-6 bg-white">
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 rounded-lg bg-pink-100 grid place-items-center text-xl shrink-0">💬</div>
+          <div>
+            <h3 class="font-bold">WhatsApp-native operations</h3>
+            <p class="text-sm text-zinc-600 mt-1.5 leading-relaxed">
+              You don't open a dashboard. You open the chat you already have open. kbrain reports in. You give it new orders. It moves.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- comparison table -->
+    <div class="mt-12 rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      <div class="grid grid-cols-4 text-sm">
+        <div class="p-4 border-b border-zinc-200 font-medium text-zinc-700"></div>
+        <div class="p-4 border-b border-l border-zinc-200 font-bold text-center bg-zinc-50">kbrain</div>
+        <div class="p-4 border-b border-l border-zinc-200 text-center text-zinc-500">Notion AI / Airtable AI</div>
+        <div class="p-4 border-b border-l border-zinc-200 text-center text-zinc-500">Hire a VA</div>
+
+        <div class="p-4 border-b border-zinc-100 text-zinc-600">Knows your voice from day one</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center bg-zinc-50">✅ trained on your chats</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">— generic prompts</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">eventually</div>
+
+        <div class="p-4 border-b border-zinc-100 text-zinc-600">Acts on its own (DMs, posts)</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center bg-zinc-50">✅ agents + triggers</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">— manual prompts</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">✅</div>
+
+        <div class="p-4 border-b border-zinc-100 text-zinc-600">Cost per month at scale</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center bg-zinc-50">$0–$10 (Groq)</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">$50–$200</div>
+        <div class="p-4 border-b border-l border-zinc-100 text-center">$400–$2,000</div>
+
+        <div class="p-4 text-zinc-600">Your data leaves your machine</div>
+        <div class="p-4 border-l border-zinc-100 text-center bg-zinc-50">never (only LLM calls)</div>
+        <div class="p-4 border-l border-zinc-100 text-center">always</div>
+        <div class="p-4 border-l border-zinc-100 text-center">always</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── install / cta ─────── -->
+<section id="install" class="bg-gradient-to-br from-indigo-600 via-fuchsia-600 to-pink-500 text-white">
+  <div class="max-w-5xl mx-auto px-6 py-24 text-center">
+    <h2 class="text-4xl md:text-5xl font-black tracking-tight">Stop replying to "magkano po?"</h2>
+    <p class="mt-4 text-lg text-white/90 max-w-2xl mx-auto">
+      Pull your chat exports, install kbrain, hire your first agent in an afternoon. One Rust binary, one `bettersync` CLI, your existing WhatsApp.
+    </p>
+
+    <div class="mt-10 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
+      <div class="rounded-2xl bg-zinc-900/40 backdrop-blur border border-white/20 p-6">
+        <div class="text-xs uppercase tracking-widest text-white/70 font-bold mb-2">Install kbrain</div>
+        <pre class="mono text-sm text-emerald-300 overflow-x-auto"><code>git clone github.com/kkodo/kbrain
+cd kbrain && cargo install --path crates/kbrain-bin
+brain init ~/my-vault
+brain serve --vault ~/my-vault</code></pre>
+      </div>
+      <div class="rounded-2xl bg-zinc-900/40 backdrop-blur border border-white/20 p-6">
+        <div class="text-xs uppercase tracking-widest text-white/70 font-bold mb-2">Drive it with bettersync</div>
+        <pre class="mono text-sm text-emerald-300 overflow-x-auto"><code>npm i -g @kkodo/bettersync
+bettersync auth login \
+  --token kb_localdev \
+  --endpoint http://127.0.0.1:7700/mcp
+bettersync ingest ~/Downloads/fb-export</code></pre>
+      </div>
+    </div>
+
+    <div class="mt-10 flex flex-wrap justify-center gap-4">
+      <a href="https://github.com/kkodo/kbrain" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-zinc-900 font-medium hover:bg-zinc-100">
+        Read the source on GitHub
+        <span aria-hidden="true">→</span>
+      </a>
+      <a href="https://npmjs.com/package/@kkodo/bettersync" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/30">
+        bettersync on npm
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ─────── footer ─────── -->
+<footer class="bg-zinc-950 text-zinc-500 py-10">
+  <div class="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-sm">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 grid place-items-center text-white font-black text-sm">k</div>
+      <span class="font-semibold text-zinc-300">kbrain</span>
+      <span class="ml-2 mono text-xs">v1.0 · MIT · made by kkodo</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <a href="https://github.com/kkodo/kbrain" class="hover:text-zinc-200">GitHub</a>
+      <a href="https://npmjs.com/package/@kkodo/bettersync" class="hover:text-zinc-200">npm</a>
+      <a href="#story" class="hover:text-zinc-200">The vision</a>
+    </div>
+  </div>
+  <div class="max-w-6xl mx-auto px-6 mt-6 text-xs text-zinc-600">
+    Mofu's story is composed from real wig-styling business chats used as the example dataset for building kbrain. Prices, character names, and platforms (GCash, Lalamove) reflect the actual business.
+  </div>
+</footer>
+
+</body>
+</html>

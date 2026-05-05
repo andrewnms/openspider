@@ -1,0 +1,22 @@
+{
+  "$schema": "https://kbrain.dev/marketplace/schema.json",
+  "version": 1,
+  "items": [
+    {
+      "id": "source-grounded-synthesis",
+      "name": "source-grounded-synthesis",
+      "displayName": "Source-Grounded Synthesis",
+      "description": "Constrains synthesis output to claims grounded in the source data. Forbids hallucination. Use whenever an agent extracts, summarizes, classifies, or analyzes data and writes back to a Brain doc / DB row.",
+      "tags": ["synthesis", "extraction", "anti-hallucination", "grounded", "rag"],
+      "skillMd": "---\nname: source-grounded-synthesis\ndisplayName: Source-Grounded Synthesis\ndescription: Constrains synthesis output to claims grounded in the source data.\n---\n\n# Source-Grounded Synthesis\n\nYou are summarizing, extracting from, or analyzing **data the user supplied** (chat threads, posts, notes, database rows, transcripts). Your job is to produce structured output that the user could verify by going back to the data.\n\nThe single rule: **every factual claim in your output must trace to specific text in the source.** If the source doesn't say it, you don't say it.\n\n## Mandatory rules\n\n1. **No invented entities.** If a tool, vendor, payment method, person, location, or fact does not appear *verbatim or in obvious paraphrase* in the data, do not include it.\n2. **Cite specific examples.** When you describe a pattern, name a thread/page/row that demonstrates it. One concrete example beats three generic claims.\n3. **Quote when feasible.** Short verbatim quotes (10–25 words, in quotation marks) are stronger evidence than paraphrase.\n4. **Qualify uncertainty.** If a pattern appears in only 1–2 threads, say so.\n5. **Refuse to invent when the data is silent.** Empty findings are useful findings.\n6. **No generic advice / industry boilerplate.**\n7. **No SEO-style filler.**\n"
+    },
+    {
+      "id": "s16-mcp-api",
+      "name": "s16-mcp-api",
+      "displayName": "S16 MCP API Reference",
+      "description": "Reference catalog of every tool the S16 MCP server exposes (140 total), grouped by resource. Use whenever an agent or human needs to drive the S16 platform. Includes 'brain from scratch' workflow recipes.",
+      "tags": ["mcp", "reference", "api", "platform", "meta"],
+      "skillMd": "---\nname: s16-mcp-api\ndisplayName: S16 MCP API Reference\ndescription: Reference catalog of every tool the S16 MCP server exposes.\n---\n\n# S16 MCP API Reference\n\nFor the full reference text, install bettersync (`npm i -g @kkodo/bettersync`) and run `bettersync skill print s16-mcp-api`. The full skill is too large to inline in this marketplace entry; this stub gives the description so it shows up in `s16_marketplace_skills` listings.\n"
+    }
+  ]
+}

@@ -1,0 +1,5115 @@
+[
+  {
+    "name": "s16_list_databases",
+    "description": "List all databases in the workspace. Returns only id, name, icon, description. Use s16_get_database to get properties.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_database",
+    "description": "Get a database schema: properties (id, name, type, isPrimary), views, and templates (id, name, isDefault). Use property IDs for filters/sorts in s16_list_pages. Use template IDs with s16_get_template/s16_apply_template.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_public_database",
+    "description": "Get a database schema through a public share link. Useful for parity with shared page/doc UI flows.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "shareId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public share ID from a shared page or doc"
+        }
+      },
+      "required": [
+        "databaseId",
+        "shareId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_database",
+    "description": "Create a new database in the workspace. Automatically creates the primary title property and the default table view.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Database name"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional emoji icon"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description"
+        },
+        "parentPageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional parent page ID for embedded databases"
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Whether the database is private to its creator"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_database",
+    "description": "Update database metadata such as name, icon, description, property order, and privacy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "New database name"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional emoji icon"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description"
+        },
+        "propertyOrder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Ordered property IDs"
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Whether the database is private"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_reorder_databases",
+    "description": "Reorder top-level databases in the workspace sidebar/workspace view.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "description": "Database IDs in final order"
+        }
+      },
+      "required": [
+        "orderedIds"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_database_default_template",
+    "description": "Set or clear the default template for new pages in a database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "templateId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Template page ID or null to clear"
+        }
+      },
+      "required": [
+        "databaseId",
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_database",
+    "description": "Delete a database. Requires admin or owner access.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_property",
+    "description": "Create a new property/column in a database. For relation properties, set config.relatedDatabaseId (required) and config.twoWay (default: true) to auto-create an inverse column on the target DB.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Property name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "title",
+            "text",
+            "number",
+            "select",
+            "multi_select",
+            "date",
+            "checkbox",
+            "url",
+            "email",
+            "phone",
+            "relation",
+            "lookup",
+            "rollup",
+            "formula",
+            "created_time",
+            "last_edited_time",
+            "created_by",
+            "last_edited_by",
+            "files",
+            "person",
+            "status",
+            "property_last_edited_time",
+            "property_last_edited_by"
+          ],
+          "description": "Property type"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Property config. For relations: { relatedDatabaseId, twoWay?, inverseName? }"
+        }
+      },
+      "required": [
+        "databaseId",
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_property",
+    "description": "Update a database property: rename, change config flags (sensitive, wrapContent, displayAs), update select/multi_select options, or replace the formula expression of a formula-typed property. Config flags are merged with existing config (not replaced).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "New property name"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Mark property as sensitive"
+        },
+        "wrapContent": {
+          "type": "boolean",
+          "description": "Wrap long content in cells"
+        },
+        "displayAs": {
+          "type": "string",
+          "description": "Display format override (e.g. \"progress_bar\")"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Selection limit for relation or multi_select. null removes the limit."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Option label"
+              },
+              "color": {
+                "type": "string",
+                "description": "Option color: blue, green, yellow, red, purple, gray"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Replace select/multi_select/status options entirely"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Formula expression for formula-typed properties (e.g. `dateBetween(now(), prop(\"Created time\"), \"workdays\")`). Only applies when property.type === \"formula\"."
+        }
+      },
+      "required": [
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_property",
+    "description": "Delete a property/column from a database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID"
+        }
+      },
+      "required": [
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_duplicate_property",
+    "description": "Duplicate an existing property/column.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID"
+        }
+      },
+      "required": [
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_rename_property_option",
+    "description": "Rename a select, multi_select, or status option and propagate the change into stored cell values.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID"
+        },
+        "oldValue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Current option label/value"
+        },
+        "newValue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "New option label/value"
+        }
+      },
+      "required": [
+        "propertyId",
+        "oldValue",
+        "newValue"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_property_option",
+    "description": "Delete a select, multi_select, or status option and remove its usages from existing rows.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Option label/value to remove"
+        }
+      },
+      "required": [
+        "propertyId",
+        "value"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_pages",
+    "description": "List pages/rows in a database. Returns propertiesCache (may be stale/incomplete). Use withCells to load fresh values for specific properties from DB. Supports search, filters (ANDed), sort, field projection. Filter operators: contains/not_contains/equals/not_equals/gt/lt/gte/lte/is_empty/is_not_empty/is_checked/is_not_checked/before/after.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "Max pages (default 50)"
+        },
+        "cursor": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset cursor for pagination"
+        },
+        "search": {
+          "type": "string",
+          "description": "Full-text search across all cell values"
+        },
+        "searchField": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Restrict search to this property ID"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "contains",
+                  "not_contains",
+                  "equals",
+                  "not_equals",
+                  "gt",
+                  "lt",
+                  "gte",
+                  "lte",
+                  "is_empty",
+                  "is_not_empty",
+                  "is_checked",
+                  "is_not_checked",
+                  "before",
+                  "after"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "description": "Filter value"
+              }
+            },
+            "required": [
+              "propertyId",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Column filters, all ANDed"
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            },
+            "required": [
+              "propertyId",
+              "direction"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Sort order"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Return only these property IDs from propertiesCache (primary always included)"
+        },
+        "withCells": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Load fresh cell values from DB for these property IDs"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_public_pages",
+    "description": "List rows in a publicly shared database context using a share ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "shareId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public share ID"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "Max pages (default 50)"
+        },
+        "cursor": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset cursor for pagination"
+        },
+        "search": {
+          "type": "string",
+          "description": "Full-text search across all cell values"
+        },
+        "searchField": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Restrict search to this property ID"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "operator": {
+                "type": "string",
+                "description": "Filter operator"
+              },
+              "value": {
+                "type": "string",
+                "description": "Filter value"
+              }
+            },
+            "required": [
+              "propertyId",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Column filters, all ANDed"
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            },
+            "required": [
+              "propertyId",
+              "direction"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Sort order"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Projected property IDs"
+        }
+      },
+      "required": [
+        "databaseId",
+        "shareId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_count_pages",
+    "description": "Count rows in a database with optional filters and search.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "operator": {
+                "type": "string",
+                "description": "Filter operator"
+              },
+              "value": {
+                "type": "string",
+                "description": "Filter value"
+              }
+            },
+            "required": [
+              "propertyId",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Column filters"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search term"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_count_public_pages",
+    "description": "Count rows in a publicly shared database context using a share ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "shareId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public share ID"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Property ID"
+              },
+              "operator": {
+                "type": "string",
+                "description": "Filter operator"
+              },
+              "value": {
+                "type": "string",
+                "description": "Filter value"
+              }
+            },
+            "required": [
+              "propertyId",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Column filters"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search term"
+        }
+      },
+      "required": [
+        "databaseId",
+        "shareId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_page",
+    "description": "Get a page/row with all its cell values",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_public_page",
+    "description": "Get a public page through its share ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "shareId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public share ID"
+        }
+      },
+      "required": [
+        "shareId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_page",
+    "description": "Create a new page/row in a database. Can set title, all property values, and rich content in one call. For cells, use property NAME (case-insensitive) as key. Value types: text/title/url/email/phone→string, number→number, checkbox→boolean, date→ISO string, select/status→option label string, multi_select→comma-separated labels or string[], relation→comma-separated target page UUIDs or string[] of UUIDs.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Page title (primary property value)"
+        },
+        "cells": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            ]
+          },
+          "description": "Property values as { propertyName: value }. Use property NAME (case-insensitive). For relation: pass string[] of UUIDs. Example: { \"Status\": \"Active\", \"Company\": [\"uuid1\", \"uuid2\"] }"
+        },
+        "content": {
+          "type": "string",
+          "description": "Page body content in markdown or HTML. For images/files/charts use HTML: <div data-type=\"file-embed\" url=\"...\" name=\"...\" mimetype=\"image/png\"></div> or <div data-type=\"chart-embed\" data-config=\"...\"></div> (requires contentFormat: \"html\"). Full spec: s16_guide({ category: \"agents\", sections: [\"richEmbeds\"] })."
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format. MUST be \"html\" when content includes <div data-type=\"file-embed\"> or <div data-type=\"chart-embed\"> — markdown mode strips them."
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_archive_page",
+    "description": "Archive a page/row.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_page",
+    "description": "Move a page/row to trash (soft delete). Can be restored later via s16_restore_page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_bulk_delete_pages",
+    "description": "Move multiple pages/rows to trash (soft delete). Can be restored later.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "description": "Array of Page IDs (max 100)"
+        }
+      },
+      "required": [
+        "pageIds"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_duplicate_page",
+    "description": "Duplicate a page/row including its values and page settings.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_page_sharing",
+    "description": "Enable or disable public sharing for a page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the page should be public"
+        }
+      },
+      "required": [
+        "pageId",
+        "isPublic"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_cell",
+    "description": "Update a single cell value on a page. Use property ID (UUID). Value types by property type: text/title/url/email/phone→string, number→number, checkbox→boolean, date→ISO string, select/status→option label string, multi_select→comma-separated labels, relation→comma-separated target page UUIDs or string[] of UUIDs, files→array of { name, url, size?, mimeType? } objects (use s16_upload_file first to get URLs). Prefer s16_bulk_update_cells to update multiple fields at once.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Property ID (UUID from s16_get_database)"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "number"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            }
+          ],
+          "description": "New value"
+        }
+      },
+      "required": [
+        "pageId",
+        "propertyId",
+        "value"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_bulk_update_cells",
+    "description": "Update multiple cell values on a page in one call. Use property NAME (case-insensitive) as key. Value types: text/title/url/email/phone→string, number→number, checkbox→boolean, date→ISO string, select/status→option label string, multi_select→comma-separated labels or string[], relation→comma-separated target page UUIDs or string[] of UUIDs, files→array of { name, url, size?, mimeType? } objects.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID (needed to resolve property names)"
+        },
+        "cells": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            ]
+          },
+          "description": "Property values as { propertyName: value }. Use property NAME (case-insensitive)."
+        }
+      },
+      "required": [
+        "pageId",
+        "databaseId",
+        "cells"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_page",
+    "description": "Update an existing page/row: set cell values and/or replace page content. Use property NAME (case-insensitive) for cells. Content can be markdown (default) or HTML.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID (needed to resolve property names)"
+        },
+        "cells": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            ]
+          },
+          "description": "Property values as { propertyName: value }"
+        },
+        "content": {
+          "type": "string",
+          "description": "Page body content in markdown or HTML (replaces existing). For images/files/charts use HTML: <div data-type=\"file-embed\" url=\"...\" mimetype=\"image/...\"></div> or <div data-type=\"chart-embed\" data-config=\"...\"></div>. Full spec: s16_guide({ category: \"agents\", sections: [\"richEmbeds\"] })."
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format. MUST be \"html\" when content includes <div data-type=\"file-embed\"> or <div data-type=\"chart-embed\"> — markdown mode strips them."
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Page icon"
+        },
+        "coverUrl": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Page cover URL"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Page config merge patch, e.g. { fullWidth: true }"
+        }
+      },
+      "required": [
+        "pageId",
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_page_content",
+    "description": "Get the rich content (HTML) of a page/row. Returns the full HTML body of the page editor.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_page_content",
+    "description": "Set the rich content of a page/row. Accepts markdown (converted to HTML) or raw HTML. Replaces all existing content.\n\nSupported markdown syntax:\n- Headings: # H1, ## H2, ### H3\n- Bold: **text**, Italic: *text*, Strikethrough: ~~text~~\n- Inline code: `code`, Links: [text](url)\n- Bullet list: - item\n- Numbered list: 1. item\n- Task list (to-do): - [ ] unchecked, - [x] checked\n- Blockquote: > text\n- Code block: ```lang ... ```\n- Horizontal rule: ---\n- Collapsible block (toggle): >>> Title\\ncontent lines\\n<<< (use \">>> closed: Title\" to start collapsed)\n\nFor IMAGES / FILES / CHARTS use contentFormat: \"html\" and emit:\n- <div data-type=\"file-embed\" url=\"...\" name=\"...\" mimetype=\"image/png\" align=\"center\" width=\"600\"></div> — renders as image if mimetype starts with image/, otherwise as a download card. Get url via s16_upload_file.\n- <div data-type=\"chart-embed\" data-title=\"...\" data-align=\"center\" data-config=\"{&quot;type&quot;:&quot;bar&quot;,&quot;data&quot;:{...}}\"></div> — Chart.js config in data-config (escape quotes as &quot;). Types: bar, line, pie, doughnut, radar, polarArea, scatter, bubble.\nFull attribute reference + gotchas: s16_guide({ category: \"agents\", sections: [\"richEmbeds\"] }).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "content": {
+          "type": "string",
+          "description": "Content in markdown or HTML format. Use HTML for images/files/charts (see tool description)."
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format: \"markdown\" (default) or \"html\". MUST be \"html\" when content includes <div data-type=\"file-embed\"> or <div data-type=\"chart-embed\">."
+        }
+      },
+      "required": [
+        "pageId",
+        "content"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_docs",
+    "description": "List docs in the workspace (top-level or by parent)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "parentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Parent doc ID (omit for root docs)"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_all_docs",
+    "description": "List all non-archived docs in the workspace as a flat collection.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_doc_children",
+    "description": "List direct children of a doc.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Parent doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_doc_ancestors",
+    "description": "Get ancestor chain for a doc.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_doc_backlinks",
+    "description": "Find docs in the workspace that link to the target doc.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Max results"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_trash_docs",
+    "description": "List archived docs in workspace trash.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Max trash docs"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_doc",
+    "description": "Get a doc with metadata. Use s16_get_doc_content for HTML body.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_public_doc",
+    "description": "Get a public doc through its share ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "shareId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public share ID"
+        }
+      },
+      "required": [
+        "shareId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_doc",
+    "description": "Create a new doc in the workspace. Can set title, icon, and rich content in one call. Content can be markdown (default) or HTML.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Doc title"
+        },
+        "parentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Parent doc ID"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Emoji icon"
+        },
+        "content": {
+          "type": "string",
+          "description": "Doc body content in markdown or HTML"
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format"
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Whether the doc is private"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_doc",
+    "description": "Update a doc title, icon or content. Content can be markdown (default) or HTML. Replaces existing content.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "New title"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "New emoji icon"
+        },
+        "coverUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Cover image URL"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Doc config merge patch, e.g. { fullWidth: true }"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Parent doc ID"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sibling position"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Archived state"
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Private state"
+        },
+        "content": {
+          "type": "string",
+          "description": "Doc body content in markdown or HTML (replaces existing)"
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_doc_sharing",
+    "description": "Enable or disable public sharing for a doc.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the doc should be public"
+        }
+      },
+      "required": [
+        "docId",
+        "isPublic"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_move_doc",
+    "description": "Move a doc to another parent or to the root.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "New parent doc ID or null"
+        }
+      },
+      "required": [
+        "docId",
+        "parentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_duplicate_doc",
+    "description": "Duplicate a doc subtree.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_doc",
+    "description": "Archive a doc subtree to trash.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_restore_doc",
+    "description": "Restore a doc subtree from trash.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_doc_permanently",
+    "description": "Delete a doc subtree permanently.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_doc_content",
+    "description": "Get the rich content (HTML) of a doc. Returns full HTML body.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        }
+      },
+      "required": [
+        "docId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_doc_content",
+    "description": "Set the rich content of a doc. Accepts markdown (converted to HTML) or raw HTML. Replaces all existing content.\n\nSupported markdown syntax:\n- Headings: # H1, ## H2, ### H3\n- Bold: **text**, Italic: *text*, Strikethrough: ~~text~~\n- Inline code: `code`, Links: [text](url)\n- Bullet list: - item\n- Numbered list: 1. item\n- Task list (to-do): - [ ] unchecked, - [x] checked\n- Blockquote: > text\n- Code block: ```lang ... ```\n- Horizontal rule: ---\n- Collapsible block (toggle): >>> Title\\ncontent lines\\n<<< (use \">>> closed: Title\" to start collapsed)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "docId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Doc ID"
+        },
+        "content": {
+          "type": "string",
+          "description": "Content in markdown or HTML format"
+        },
+        "contentFormat": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "html"
+          ],
+          "default": "markdown",
+          "description": "Content format: markdown (default) or html"
+        }
+      },
+      "required": [
+        "docId",
+        "content"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_views",
+    "description": "List all views for a database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_view",
+    "description": "Create a new database view.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "View name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "table",
+            "board",
+            "list",
+            "calendar",
+            "gallery",
+            "timeline"
+          ],
+          "default": "table",
+          "description": "View type"
+        }
+      },
+      "required": [
+        "databaseId",
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_view",
+    "description": "Update an existing view. Supports name, type, filters, sorts, visibleProperties, propertyWidths, groupBy, cardFields, cardOrder, config, and order.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "View ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "View name"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "table",
+            "board",
+            "list",
+            "calendar",
+            "gallery",
+            "timeline"
+          ],
+          "description": "View type"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "description": "View filters"
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "description": "View sorts"
+        },
+        "visibleProperties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Visible property IDs"
+        },
+        "propertyWidths": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Property width map"
+        },
+        "groupBy": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Group by property ID"
+        },
+        "cardFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Board/gallery card field IDs"
+        },
+        "cardOrder": {
+          "type": "string",
+          "description": "Card ordering preset"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Arbitrary view config"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Manual view order"
+        }
+      },
+      "required": [
+        "viewId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_reorder_views",
+    "description": "Reorder views inside a database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "description": "View IDs in final order"
+        }
+      },
+      "required": [
+        "databaseId",
+        "orderedIds"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_view",
+    "description": "Delete a database view.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "View ID"
+        }
+      },
+      "required": [
+        "viewId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_blocks",
+    "description": "List blocks for a page in editor order.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        }
+      },
+      "required": [
+        "pageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_block",
+    "description": "Create a new block inside a page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Page ID"
+        },
+        "parentBlockId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional parent block ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "paragraph",
+            "heading_1",
+            "heading_2",
+            "heading_3",
+            "bulleted_list",
+            "numbered_list",
+            "to_do",
+            "toggle",
+            "code",
+            "quote",
+            "divider",
+            "image",
+            "file",
+            "table",
+            "embed_database",
+            "callout",
+            "bookmark"
+          ],
+          "description": "Block type"
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {},
+          "default": {},
+          "description": "Block content payload"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional block position"
+        }
+      },
+      "required": [
+        "pageId",
+        "type"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_block",
+    "description": "Update a block type, content, or position.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Block ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "paragraph",
+            "heading_1",
+            "heading_2",
+            "heading_3",
+            "bulleted_list",
+            "numbered_list",
+            "to_do",
+            "toggle",
+            "code",
+            "quote",
+            "divider",
+            "image",
+            "file",
+            "table",
+            "embed_database",
+            "callout",
+            "bookmark"
+          ],
+          "description": "Block type"
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Block content payload"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block position"
+        }
+      },
+      "required": [
+        "blockId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_block",
+    "description": "Delete a block from a page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Block ID"
+        }
+      },
+      "required": [
+        "blockId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_files",
+    "description": "List files uploaded in the current workspace.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_file",
+    "description": "Create a file record from an existing public URL.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "File name"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public file URL"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional file size in bytes"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "Optional MIME type"
+        }
+      },
+      "required": [
+        "name",
+        "url"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_upload_file",
+    "description": "Upload a file from base64-encoded data to S3 storage. Returns the created file record with its hosted URL. Use the returned file record to set a \"files\" property value via s16_update_cell or s16_bulk_update_cells (pass an array of { name, url, size?, mimeType? } objects).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "description": "File name including extension (e.g. \"deck.pdf\")"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "MIME type (e.g. \"application/pdf\"). Defaults to application/octet-stream."
+        },
+        "base64": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Base64-encoded file content"
+        }
+      },
+      "required": [
+        "filename",
+        "base64"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_file",
+    "description": "Delete a file record.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "File ID"
+        }
+      },
+      "required": [
+        "fileId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_relations",
+    "description": "List relation values for a relation property on a source page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sourcePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Source page ID"
+        },
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Relation property ID"
+        }
+      },
+      "required": [
+        "sourcePageId",
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_add_relation",
+    "description": "Add a relation between two pages. If the relation is two-way (has inversePropertyId), the inverse side is updated automatically.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sourcePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Source page ID"
+        },
+        "targetPageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Target page ID"
+        },
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Relation property ID"
+        }
+      },
+      "required": [
+        "sourcePageId",
+        "targetPageId",
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_remove_relation",
+    "description": "Remove a relation between two pages. If the relation is two-way, the inverse side is updated automatically.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sourcePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Source page ID"
+        },
+        "targetPageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Target page ID"
+        },
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Relation property ID"
+        }
+      },
+      "required": [
+        "sourcePageId",
+        "targetPageId",
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_convert_relation_to_two_way",
+    "description": "Convert a one-way relation property to two-way. Creates an inverse column on the target database and backfills existing relation data. Check isTwoWay in s16_get_database output first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "One-way relation property ID to convert"
+        }
+      },
+      "required": [
+        "propertyId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_search_workspace",
+    "description": "Search pages across the current workspace by text query.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200,
+          "description": "Search query"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Max results"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_guide",
+    "description": "Reference guide for S16 platform capabilities. Categories: \"agents\" (execution modes, data model CRUD, tools, sandbox API, rich embeds in page content, model selection), \"page_templates\" (content structure, styles, config, embeds, variables, MCP workflow). Call without sections to get the full guide for a category. Use sections=[\"richEmbeds\"] to look up how to embed images, files, or Chart.js charts inside page HTML content.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "agents",
+            "page_templates"
+          ],
+          "description": "Guide category"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "json"
+          ],
+          "description": "Output format (default: markdown)"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Limit to specific sections. Agents: overview, execution, dataModel, legacyTools, sandboxApi, richEmbeds, mcpTools, modelSelection. Page templates: overview, content, styles, config, embeds, variables, mcpTools"
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_templates",
+    "description": "List all templates for a database. Returns id, name, icon, isDefault flag, and a short content preview. Use s16_get_template for full details.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        }
+      },
+      "required": [
+        "databaseId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_template",
+    "description": "Get a template by ID with full details: name, icon, title, content (HTML), config (layout/cover/icon/showProperties), styles (background/fonts/colors/CSS), and embeds (embedded database views with filters). Call s16_guide({ category: \"page_templates\" }) for full reference on content HTML, styles, config, embeds, and variables.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Template ID"
+        }
+      },
+      "required": [
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_template",
+    "description": "Create a new template for a database. After creation, use s16_set_database_default_template to make it default. Call s16_guide({ category: \"page_templates\" }) for full reference on content HTML, styles, config, embeds, and variables.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Database ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Template name"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Emoji icon for pages created from this template"
+        },
+        "title": {
+          "type": "string",
+          "description": "Default page title. Supports {{variables}} like {{current_date.date}}"
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Content object: { html: \"<p>Hello</p>\" }. Use semantic HTML only (p, h1-h3, ul, ol, table, blockquote). No div layouts. Embed databases via <div data-embed-id=\"EMBED_ID\"></div>"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Config: { layout?: \"narrow\"|\"full\", cover?: \"url\", icon?: \"emoji\", showProperties?: [\"uuid1\",\"uuid2\"] }"
+        },
+        "styles": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Styles: { background?, fontFamily?, textColor?, maxWidth?, padding?, titleFontSize?, titleColor?, titleFontFamily?, titleAlign?, headerBackground?, headerPadding?, customCSS? }"
+        },
+        "embeds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "description": "Embedded databases: [{ id: \"unique-id\", databaseId: \"uuid\", viewType: \"table\"|\"board\"|\"list\"|\"gallery\", filters: [{propertyId, operator, value}], sorts: [{propertyId, direction}] }]. Reference in HTML via <div data-embed-id=\"id\"></div>. Filter values support {{variables}}."
+        }
+      },
+      "required": [
+        "databaseId",
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_template",
+    "description": "Update an existing template. Only provided fields are changed; omitted fields stay as-is. Use s16_get_template first to read current values. Call s16_guide({ category: \"page_templates\" }) for full reference on content HTML, styles, config, embeds, and variables.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Template ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Template name"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Emoji icon (null to clear)"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Default page title. Supports {{variables}}. null to clear"
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Content: { html: \"<p>...</p>\" }. Replaces entire content."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Config: { layout?, cover?, icon?, showProperties? }. Replaces entire config."
+        },
+        "styles": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Styles: { background?, fontFamily?, textColor?, maxWidth?, padding?, titleFontSize?, titleColor?, titleFontFamily?, titleAlign?, headerBackground?, headerPadding?, customCSS? }. Replaces entire styles."
+        },
+        "embeds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "description": "Embedded databases array. Replaces entire embeds list."
+        }
+      },
+      "required": [
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_template",
+    "description": "Delete a template from a database. If this template is the default, clear it first with s16_set_database_default_template(templateId: null).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Template ID"
+        }
+      },
+      "required": [
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_apply_template",
+    "description": "Apply a template to create a single new page. Resolves all {{variables}} in content and embed filters, sets icon/cover/config/styles from the template. Returns the new page ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Template ID"
+        }
+      },
+      "required": [
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_apply_template_to_all",
+    "description": "Apply a template to ALL existing non-archived pages in the database. WARNING: destructive — overwrites page content, config, styles, icon, cover, and deletes existing Yjs documents. Variables are resolved per-page using each page's property cache.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Template ID"
+        }
+      },
+      "required": [
+        "templateId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_sites",
+    "description": "List all sites in the workspace. Returns id, name, slug, icon, isPublished, isArchived. Use includeArchived to also return archived sites.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "includeArchived": {
+          "type": "boolean",
+          "description": "Include archived sites (default false)"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_site",
+    "description": "Create a new website. A home page (slug=home) is auto-created with a starter index.html. Returns { id, slug, name }.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Display name of the site"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "URL-safe lowercase identifier (e.g. \"my-site\")"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Emoji icon"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Short description"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Site settings (themeColor, baseFontFamily, navItems, etc.)"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_site",
+    "description": "Get site details plus its pages list (id, slug, title, isHome, isPublished). Use s16_get_site_page for full page files.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site ID"
+        }
+      },
+      "required": [
+        "siteId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_site",
+    "description": "Update site metadata. Only provided fields are changed. Use s16_get_site first to read current values.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Display name"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "URL-safe lowercase identifier"
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Emoji icon (null to clear)"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Short description"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Site settings object (replaces entirely)"
+        },
+        "globalCss": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Global CSS injected on all pages"
+        },
+        "globalJs": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Global JS injected on all pages"
+        },
+        "faviconUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Favicon URL"
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Publish/unpublish the site"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Archive/restore the site"
+        }
+      },
+      "required": [
+        "siteId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_site",
+    "description": "Permanently delete a site and all its pages. This is irreversible.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site ID"
+        }
+      },
+      "required": [
+        "siteId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_site_pages",
+    "description": "List all pages for a site. Returns metadata and entry path. Use s16_get_site_page for the full files dictionary.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site ID"
+        }
+      },
+      "required": [
+        "siteId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_site_page",
+    "description": "Create a new page in a site. If files are omitted a starter index.html is used. Returns the created page.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site ID"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "URL path segment (e.g. \"about\")"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Page title (default \"Untitled\")"
+        },
+        "isHome": {
+          "type": "boolean",
+          "description": "Mark as home page (clears previous home)"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 256000
+          },
+          "description": "Initial virtual file system { path: content }"
+        },
+        "entryPath": {
+          "type": "string",
+          "description": "Entry HTML file path (default \"index.html\")"
+        }
+      },
+      "required": [
+        "siteId",
+        "slug"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_site_page",
+    "description": "Get full site page data including the virtual file system, entry path, allowed databases, customCss, customJs, and SEO fields.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        }
+      },
+      "required": [
+        "sitePageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_site_page",
+    "description": "Update site page metadata (slug, title, css, js, seo, isHome, isPublished). For file edits use s16_write_site_page_file or s16_edit_site_page_file.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "URL path segment"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Page title"
+        },
+        "customCss": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Page-level CSS override"
+        },
+        "customJs": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Page-level JS override"
+        },
+        "seo": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "SEO object: { title?, description?, ogImageUrl?, noindex?, canonicalUrl? }"
+        },
+        "isHome": {
+          "type": "boolean",
+          "description": "Mark as home page"
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Publish/unpublish the page"
+        }
+      },
+      "required": [
+        "sitePageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_site_page",
+    "description": "Delete a site page permanently. If the deleted page was the home page, the next page in position order is promoted to home automatically.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        }
+      },
+      "required": [
+        "sitePageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_publish_site_page",
+    "description": "Publish or unpublish a site page. When publishing, a shareId is generated if one does not exist. Returns { isPublished, shareId, publicUrl }.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "publish": {
+          "type": "boolean",
+          "description": "true to publish, false to unpublish"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "publish"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_site_page_files",
+    "description": "List all file paths in a site page virtual file system. Returns { paths, entryPath, filesVersion }.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        }
+      },
+      "required": [
+        "sitePageId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_read_site_page_file",
+    "description": "Read the contents of a single file in the site page virtual file system.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9_./\\-]+$",
+          "description": "File path (e.g. \"index.html\", \"styles.css\")"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "path"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_write_site_page_file",
+    "description": "Create or overwrite a single file in the site page virtual file system. Use for new files or large rewrites.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9_./\\-]+$",
+          "description": "File path"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 256000,
+          "description": "File content (max 256 KB)"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "path",
+        "content"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_edit_site_page_file",
+    "description": "Replace a unique substring in a file. The oldString must occur EXACTLY ONCE — include surrounding context to make it unique.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9_./\\-]+$",
+          "description": "File path"
+        },
+        "oldString": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact substring to replace (must be unique in the file)"
+        },
+        "newString": {
+          "type": "string",
+          "description": "Replacement string"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "path",
+        "oldString",
+        "newString"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_site_page_file",
+    "description": "Delete a file from the site page virtual file system. Cannot delete the entry file.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9_./\\-]+$",
+          "description": "File path"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "path"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_site_page_files",
+    "description": "Replace the entire virtual file system of a site page. Optionally update entryPath and allowedDatabases (whitelist for public bridge data).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sitePageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site page ID"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 256000
+          },
+          "description": "Full files dictionary { path: content }"
+        },
+        "entryPath": {
+          "type": "string",
+          "description": "Entry HTML file path"
+        },
+        "allowedDatabases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Whitelisted database UUIDs for s16.data.queryDatabase on the published site"
+        }
+      },
+      "required": [
+        "sitePageId",
+        "files"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_site_components",
+    "description": "List site components available to the workspace (system, public, and workspace-scoped). Supports filtering by scope, category, or search term.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "system",
+            "workspace",
+            "public"
+          ],
+          "description": "Filter by scope (omit for all accessible)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Filter by category name"
+        },
+        "search": {
+          "type": "string",
+          "description": "Search in name, displayName, description"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_site_component",
+    "description": "Get full site component details including propsSchema, defaultProps, tree (JSON), and code (JS).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteComponentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site component ID"
+        }
+      },
+      "required": [
+        "siteComponentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_site_component",
+    "description": "Create a new workspace-scoped site component (legacy marketplace artefact). Returns the created component.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+          "description": "Component identifier (PascalCase)"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "icon": {
+          "type": "string"
+        },
+        "thumbnailUrl": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "propsSchema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "defaultProps": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "tree": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "code": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_site_component",
+    "description": "Update a workspace-scoped site component. Only provided fields are changed. System components cannot be modified.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteComponentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site component ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 60
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "thumbnailUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "propsSchema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "defaultProps": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "tree": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "siteComponentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_site_component",
+    "description": "Permanently delete a workspace-scoped site component. System components cannot be deleted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteComponentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site component ID"
+        }
+      },
+      "required": [
+        "siteComponentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_install_site_component",
+    "description": "Clone a public or system component into the current workspace. Returns the new workspace-scoped component.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteComponentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the public or system component to install"
+        }
+      },
+      "required": [
+        "siteComponentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_site_assets",
+    "description": "List site assets uploaded to the workspace. Optionally filter by site.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Filter assets belonging to a specific site"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_site_asset",
+    "description": "Delete a site asset record. Does not delete the underlying file from storage.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "siteAssetId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Site asset ID"
+        }
+      },
+      "required": [
+        "siteAssetId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_waitlist",
+    "description": "List all users awaiting admin approval (is_waitlisted = true). Restricted to dev@s16vc.com and aleks@s16vc.com.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_approve_waitlist_user",
+    "description": "Approve a waitlisted user (clears is_waitlisted). Identify by userId OR email. Restricted to dev@s16vc.com and aleks@s16vc.com.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_reject_waitlist_user",
+    "description": "Reject a waitlisted user — deletes the account entirely. Identify by userId OR email. Refuses to delete users that are NOT on the waitlist. Restricted to dev@s16vc.com and aleks@s16vc.com.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_agents",
+    "description": "List all AI agents in the workspace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_agent",
+    "description": "Get full agent details including system prompt, model, tools, triggers",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_agent",
+    "description": "Create a new AI agent. After creation, compile the agent: either call s16_compile_agent (AI generates JS) or write the script yourself via s16_update_agent({ compiledScript }). Uncompiled agents use expensive LLM calls on every run. Use s16_guide({ category: \"agents\" }) for full reference including sandbox API. Use skillIds to attach reusable knowledge/instructions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Agent name"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Optional category for grouping agents in the UI"
+        },
+        "description": {
+          "type": "string",
+          "description": "Agent description"
+        },
+        "systemPrompt": {
+          "type": "string",
+          "description": "System prompt for the agent"
+        },
+        "model": {
+          "type": "string",
+          "description": "OpenRouter model ID (e.g. anthropic/claude-3.5-sonnet)"
+        },
+        "modelParams": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Model params: { temperature, max_tokens, ... }"
+        },
+        "tools": {
+          "type": "array",
+          "description": "Custom tool definitions (OpenAI function calling format)"
+        },
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "JSON Schema for structured input"
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Skill IDs to assign"
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "If true, only owner can edit"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "draft",
+            "archived"
+          ],
+          "description": "Agent status"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 86400,
+          "description": "Execution timeout in seconds (default 3600 = 1 hour, max 86400 = 24 hours)"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_agent",
+    "description": "Update an existing AI agent. You can set compiledScript directly to write a custom JS script (use s16_guide for sandbox API), or update systemPrompt/model/tools and then call s16_compile_agent to regenerate. Locked agents: owner-only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Agent name"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional category. Pass null to clear."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description"
+        },
+        "systemPrompt": {
+          "type": "string",
+          "description": "System prompt"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model ID"
+        },
+        "modelParams": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Model params"
+        },
+        "tools": {
+          "type": "array",
+          "description": "Tool definitions"
+        },
+        "inputSchema": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Input schema"
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "Skill IDs to assign"
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Lock status"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "draft",
+            "archived"
+          ],
+          "description": "Status"
+        },
+        "compiledScript": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Manually set the compiled JS script. Pass null to clear."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 86400,
+          "description": "Execution timeout in seconds (default 3600 = 1 hour, max 86400 = 24 hours)"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_agent",
+    "description": "Delete an AI agent",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_trigger",
+    "description": "Create an agent trigger. Types: event (DB changes), cron (scheduled), webhook (HTTP endpoint), gmail (polls for new emails), agent_change (fires when ANOTHER agent is edited). Webhook triggers generate a unique URL. Gmail triggers require a Google OAuth credential with email capability. The agent_change trigger lets one agent react to edits on a target agent — useful for audit/notify/sync workflows.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "event",
+            "cron",
+            "webhook",
+            "gmail",
+            "agent_change"
+          ],
+          "description": "Trigger type"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Trigger config. Event: { database_id, event: \"row.created\"|\"row.updated\"|\"row.deleted\", condition?: { property_id?, page_id?, old_value?, new_value?, old_value_includes?, new_value_includes? } }. To trigger on a specific column value change, use event: \"row.updated\" with condition.property_id + condition.new_value (or new_value_includes). Do NOT use \"property.changed\" — it is accepted by the API but does not fire in practice. Cron: { expression: string, timezone?: string, inputPrompt?: string (≤8KB, optional default prompt), inputData?: object (≤64KB JSON, optional default params merged into context.inputData at fire time — use this for multi-tenant scheduled agents: one engine, N crons, each carrying its own params; do NOT put secrets here, store them via s16.setSecret and reference by key) }. Webhook: {} (no config needed). Gmail: { credential_title?: string, label_ids?: [\"INBOX\"], query?: string, poll_interval_seconds?: number (default 120, min 30) }. agent_change: { agentId: <UUID of the agent to watch>, fields?: string[] (optional whitelist — only fire if at least one of these changed; valid keys: name, category, description, systemPrompt, model, modelParams, tools, inputSchema, skillIds, timeout, compiledScript, isLocked, accessLevel, status), excludeSources?: (\"app\"|\"mcp\"|\"restore\"|\"system\")[] (skip events from these sources to avoid loops). The agent listens to changes on the TARGET agent and runs with triggerContext = { agentId, userId, source, changedFields }. Self-loop is auto-prevented (an agent never triggers itself)."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether trigger is active"
+        },
+        "webhookMode": {
+          "type": "string",
+          "enum": [
+            "async",
+            "sync"
+          ],
+          "description": "Webhook only: async (200 OK immediately) or sync (waits for script, returns s16.respond() result). Default: async"
+        }
+      },
+      "required": [
+        "agentId",
+        "type"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_trigger",
+    "description": "Delete an agent trigger",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "triggerId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Trigger ID"
+        }
+      },
+      "required": [
+        "triggerId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_run_agent",
+    "description": "Run an agent manually. Returns a run object with id/status. Use s16_await_run to wait for completion and get output/logs. Compiled agents execute their JS script; uncompiled agents use LLM tool-calling loop.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        },
+        "inputPrompt": {
+          "type": "string",
+          "description": "Text prompt for the agent"
+        },
+        "inputData": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Structured input data (JSON)"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_run_agent_by_name",
+    "description": "Find an agent by name (case-insensitive substring match) and run it. Useful when you know the agent name but not its UUID. Returns the run object.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Agent name or substring to match (e.g. \"Buffer\", \"Transcript Importer\")"
+        },
+        "inputPrompt": {
+          "type": "string",
+          "description": "Text prompt for the agent"
+        },
+        "inputData": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Structured input data (JSON)"
+        },
+        "await": {
+          "type": "boolean",
+          "description": "If true, wait for the run to complete (up to 120s) and return full result including logs and output. Default: false"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_await_run",
+    "description": "Wait for an agent run to complete (polls every 1s, up to 120s). Returns full run details including output, logs, and token usage.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent run ID to wait for"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Max seconds to wait (default 120)"
+        }
+      },
+      "required": [
+        "runId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_cancel_run",
+    "description": "Cancel a running agent run. Terminates the worker thread and updates run status to \"cancelled\". Safe to call on already-finished runs (no-op).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent run ID to cancel"
+        }
+      },
+      "required": [
+        "runId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_compile_agent",
+    "description": "Compile an agent into a sandboxed JS script via AI. Alternative: write the script yourself via s16_update_agent({ compiledScript }). The compiled script runs in node:vm with s16.* API (s16.db.listRows, s16.db.updateCell, s16.ai, s16.http, s16.store.*, etc.) and context object. Saves ~95% tokens vs legacy LLM mode. Use s16_guide({ category: \"agents\", sections: [\"sandboxApi\"] }) for API reference.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID to compile"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_run",
+    "description": "Get details of an agent run including messages and output",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent run ID"
+        }
+      },
+      "required": [
+        "runId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_runs",
+    "description": "List recent agent runs in the workspace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Filter by agent ID"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Max runs (default 50)"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_agent_webhook_url",
+    "description": "Get the webhook URL for an agent that has a webhook trigger configured",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_agent_history",
+    "description": "List the change history of an agent (who edited it, when, and which fields changed). Each entry includes changedFields, per-field {from, to} diff (large values truncated), source (app | mcp | restore | system), and the editor user info. Optionally filter by userId to see only one editor's changes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Agent ID"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Max entries to return (default 50, max 200)"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional: only return changes made by this user"
+        }
+      },
+      "required": [
+        "agentId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_set_secret",
+    "description": "Store an encrypted secret (API key, token) in the workspace. Secrets are available in agent scripts via s16.getSecret(key). Overwrites if key already exists.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Secret key name (e.g. TELEGRAM_BOT_TOKEN, AIRTABLE_TOKEN)"
+        },
+        "value": {
+          "type": "string",
+          "description": "Secret value"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_secrets",
+    "description": "List all secret keys in the workspace (values are NOT shown for security)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_secret",
+    "description": "Delete a secret from the workspace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Secret key to delete"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_credential_providers",
+    "description": "List available credential providers and their supported capabilities.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_credential",
+    "description": "Get a single credential with provider-aware metadata.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "credentialId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Credential ID"
+        }
+      },
+      "required": [
+        "credentialId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_credential",
+    "description": "Create a service credential (API key, bot token, OAuth token, etc.). Credentials are stored as JSON and accessible in agent scripts via s16.getCredential(service). Common services: telegram, airtable, slack, github, openai, stripe, twilio.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "description": "Service identifier (e.g. \"telegram\", \"airtable\", \"slack\")"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title (e.g. \"Orbit Bot\", \"S16vc CRM 2.0\")"
+        },
+        "credentials": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Credentials JSON. Telegram: { botToken, botUsername? }. Airtable: { apiKey, baseId }. Generic: { apiKey } or any key-value pairs."
+        },
+        "connectionType": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "oauth"
+          ],
+          "description": "manual or oauth"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google",
+            "krisp",
+            "generic_oauth"
+          ],
+          "description": "OAuth provider ID"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "contacts",
+              "drive",
+              "transcripts",
+              "api_key",
+              "bot_token",
+              "webhook_secret",
+              "custom_api",
+              "custom_data"
+            ]
+          },
+          "description": "Credential capabilities"
+        },
+        "accountIdentifier": {
+          "type": "string",
+          "description": "Optional email/account identifier"
+        }
+      },
+      "required": [
+        "service",
+        "credentials"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_start_credential_oauth",
+    "description": "Start an OAuth connection flow for a credential provider. Returns sessionId and authorizationUrl.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google",
+            "krisp",
+            "generic_oauth"
+          ],
+          "description": "OAuth provider ID"
+        },
+        "credentialId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional existing credential ID to update"
+        },
+        "title": {
+          "type": "string",
+          "description": "Optional connection title"
+        },
+        "service": {
+          "type": "string",
+          "description": "Optional service key override"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "contacts",
+              "drive",
+              "transcripts",
+              "api_key",
+              "bot_token",
+              "webhook_secret",
+              "custom_api",
+              "custom_data"
+            ]
+          },
+          "minItems": 1,
+          "description": "Requested capabilities"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Explicit OAuth scopes"
+        },
+        "providerConfig": {
+          "type": "object",
+          "properties": {
+            "authorizationServer": {
+              "type": "string",
+              "format": "uri"
+            },
+            "authorizeUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "tokenUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "userInfoUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "mcpUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "protectedResourceUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "clientId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "clientSecret": {
+              "type": "string",
+              "minLength": 1
+            },
+            "usePkce": {
+              "type": "boolean"
+            },
+            "tokenAuthMethod": {
+              "type": "string",
+              "enum": [
+                "client_secret_post",
+                "client_secret_basic",
+                "none"
+              ]
+            },
+            "accountHint": {
+              "type": "string",
+              "maxLength": 320
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "additionalProperties": false,
+          "description": "Optional provider override config"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_get_credential_auth_session",
+    "description": "Get the current status of a credential OAuth session.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "OAuth session ID"
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_credentials",
+    "description": "List all service credentials in the workspace (credentials values are shown). Filter by service optionally.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "description": "Filter by service (e.g. \"telegram\")"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_mcp_tools",
+    "description": "List tools available through a remote MCP credential. Use credentialId to choose the exact connected account.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "credentialId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Credential ID for the remote MCP connection"
+        }
+      },
+      "required": [
+        "credentialId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_call_mcp_tool",
+    "description": "Call a tool exposed by a remote MCP credential. Inspect s16_list_mcp_tools first and then call the selected tool by name.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "credentialId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Credential ID for the remote MCP connection"
+        },
+        "toolName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Remote MCP tool name"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Arguments passed to the remote tool"
+        }
+      },
+      "required": [
+        "credentialId",
+        "toolName"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_credential",
+    "description": "Update an existing service credential",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Credential ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "New title"
+        },
+        "credentials": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "New credentials JSON (replaces entire object)"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ],
+          "description": "Status"
+        },
+        "connectionType": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "oauth"
+          ],
+          "description": "manual or oauth"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "google",
+                "krisp",
+                "generic_oauth"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "OAuth provider ID"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "email",
+              "calendar",
+              "contacts",
+              "drive",
+              "transcripts",
+              "api_key",
+              "bot_token",
+              "webhook_secret",
+              "custom_api",
+              "custom_data"
+            ]
+          },
+          "description": "Credential capabilities"
+        },
+        "accountIdentifier": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional email/account identifier"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_credential",
+    "description": "Delete a service credential",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Credential ID"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_create_skill",
+    "description": "Create a new skill in the workspace. A skill is a SKILL.md file with instructions/knowledge that can be distributed via MCP.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Skill slug (lowercase, hyphens, e.g. analyze-deal)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill description"
+        },
+        "skillMd": {
+          "type": "string",
+          "description": "SKILL.md content (frontmatter + markdown)"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Supporting files: { \"reference.md\": \"content...\", \"scripts/helper.py\": \"...\" }"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for marketplace"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semver version"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "general",
+            "editor"
+          ],
+          "description": "Skill type: general (MCP prompt) or editor (available in Tiptap editor AI)"
+        }
+      },
+      "required": [
+        "name",
+        "displayName",
+        "skillMd"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_update_skill",
+    "description": "Update an existing skill",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Skill ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Skill slug"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description"
+        },
+        "skillMd": {
+          "type": "string",
+          "description": "SKILL.md content"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Supporting files"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "general",
+            "editor"
+          ],
+          "description": "Skill type: general (MCP prompt) or editor (available in Tiptap editor AI)"
+        }
+      },
+      "required": [
+        "skillId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_delete_skill",
+    "description": "Delete a skill",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Skill ID"
+        }
+      },
+      "required": [
+        "skillId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_list_skills",
+    "description": "List skills: workspace-owned and installed from marketplace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_marketplace_skills",
+    "description": "Browse public skills available in the marketplace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_install_skill",
+    "description": "Install a public skill from the marketplace into the workspace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Skill ID to install"
+        }
+      },
+      "required": [
+        "skillId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_uninstall_skill",
+    "description": "Uninstall a skill from the workspace",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Skill ID"
+        }
+      },
+      "required": [
+        "skillId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "s16_publish_skill",
+    "description": "Publish a workspace skill to the marketplace. Any member of the owning workspace can publish.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Skill ID"
+        }
+      },
+      "required": [
+        "skillId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  }
+]

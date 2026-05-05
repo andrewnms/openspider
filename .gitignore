@@ -1,0 +1,38 @@
+# ── Build artifacts ───────────────────────────────────────────────────────
+target/
+dist/
+**/node_modules/
+**/.DS_Store
+
+# Tauri-side build outputs
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/dist/
+
+# Generated icon previews (the source.svg is the canonical artifact)
+desktop/src-tauri/icons/source-1024.png
+desktop/src-tauri/icons/_preview-*.png
+
+# Runtime / user state
+*.log
+*.tmp
+.env
+.env.*
+
+# Vault data — never commit a user's actual workspace
+brain-vault/
+**/brain-vault/
+my-vault/
+**/my-vault/
+
+# Secrets that might land in the repo by accident
+**/.kbrain/credentials.json
+**/.kbrain/secrets.json
+**/.openspider/credentials.json
+**/.openspider/secrets.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
