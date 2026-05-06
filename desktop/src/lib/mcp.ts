@@ -103,6 +103,11 @@ export type Doc = {
   /** Sibling-order key. Lower = earlier. Undefined = falls back to alphabetical
    *  at the end of the ordered set. Set via drag-drop / "Create above/below". */
   position?: number | null
+  /** Flashcard / SRS state. Only present when the doc has been marked as a card. */
+  flashcard?: boolean
+  cardDue?: string         // ISO-8601 next review timestamp
+  cardInterval?: number    // days until next review
+  cardEase?: number        // SM-2 ease factor
   isArchived?: boolean; isPublic?: boolean; shareId?: string | null
   createdAt?: string; updatedAt?: string
 }
@@ -187,6 +192,14 @@ export const k = {
     call<{ content: string }>('s16_get_doc_snapshot', { docId: id, timestamp }),
   restoreDocSnapshot:(id: string, timestamp: string) =>
     call<Doc>('s16_restore_doc_snapshot', { docId: id, timestamp }),
+
+  // Flashcards / SRS — cards are docs with `flashcard: true` in frontmatter.
+  listDueCards: () => call<Doc[]>('s16_list_due_cards'),
+  listAllCards: () => call<Doc[]>('s16_list_all_cards'),
+  setDocFlashcard: (id: string, isCard: boolean) =>
+    call<Doc>('s16_set_doc_flashcard', { docId: id, isCard }),
+  reviewCard: (id: string, rating: 1 | 2 | 3 | 4) =>
+    call<Doc>('s16_review_card', { docId: id, rating }),
   moveDoc: (id: string, newParentId: string | null, position?: number | null) =>
     call<Doc>('s16_move_doc', {
       docId: id, newParentId,

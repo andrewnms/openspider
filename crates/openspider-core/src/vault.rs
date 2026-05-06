@@ -2033,13 +2033,22 @@ impl Vault {
         let needle_id = format!("|{}]]", target.id);
         let needle_title = format!("[[{}]]", target.title);
         let needle_title_alias = format!("[[{}|", target.title);
+        // Block-ref / transclude syntax: ((title)) and ((id)). Same
+        // doc-resolution semantics as wiki-links but rendered inline as a
+        // pill (the editor side of this lives in MarkdownEditor.tsx).
+        let needle_block_title = format!("(({}))", target.title);
+        let needle_block_id = format!("(({}))", target.id);
 
         let mut backlinks = Vec::new();
         for d in self.scan_docs(false)? {
             if d.id == doc_id { continue; }
             let path = self.root.join(&d.path);
             let raw = fs::read_to_string(&path).unwrap_or_default();
-            if raw.contains(&needle_id) || raw.contains(&needle_title) || raw.contains(&needle_title_alias) {
+            if raw.contains(&needle_id) || raw.contains(&needle_title)
+                || raw.contains(&needle_title_alias)
+                || raw.contains(&needle_block_title)
+                || raw.contains(&needle_block_id)
+            {
                 backlinks.push(d);
             }
         }
@@ -2064,6 +2073,10 @@ impl Vault {
             icon,
             parent_id,
             position: None,
+            flashcard: None,
+            card_due: None,
+            card_interval: None,
+            card_ease: None,
             is_archived: false,
             is_public: false,
             share_id: None,
@@ -2177,6 +2190,94 @@ impl Vault {
         }
         let body = self.get_doc_snapshot(doc_id, timestamp)?;
         self.update_doc(doc_id, DocPatch { content_md: Some(body), ..Default::default() })
+    }
+
+    /* ────────── Flashcards (SM-2-style, state in frontmatter) ────────── */
+
+    /// Toggle a doc's flashcard flag. Setting it to `true` initialises the
+    /// card so it's due immediately (no other SRS state — the next review
+    /// fills in interval/ease).
+    pub fn set_doc_flashcard(&self, doc_id: &str, is_card: bool) -> Result<Doc> {
+        let (_, path) = self.find_doc(doc_id)?;
+        let raw = fs::read_to_string(&path)?;
+        let (fm_raw, body) = split_frontmatter(&raw)?;
+        let mut fm: DocFrontmatter = serde_yaml::from_str(&fm_raw)?;
+        fm.flashcard = Some(is_card);
+        if !is_card {
+            // Strip SRS state when toggling off so the doc returns to a
+            // clean shape — keeps frontmatter lean for non-cards.
+            fm.card_due = None;
+            fm.card_interval = None;
+            fm.card_ease = None;
+        } else if fm.card_due.is_none() {
+            fm.card_due = Some(chrono::Utc::now().to_rfc3339());
+        }
+        fm.updated_at = chrono::Utc::now().to_rfc3339();
+        write_doc_file(&path, &fm, &body)?;
+        Ok(read_doc_file(&path, &self.root)?)
+    }
+
+    /// Apply an SM-2-ish review and persist the new state.
+    ///
+    /// Rating maps:
+    ///   1 (Again) → reset interval, ease -= 0.20 (floor 1.3)
+    ///   2 (Hard)  → interval *= 1.2, ease -= 0.15
+    ///   3 (Good)  → interval *= ease (or 1d on first review), ease unchanged
+    ///   4 (Easy)  → interval *= ease * 1.3, ease += 0.10
+    pub fn review_card(&self, doc_id: &str, rating: u8) -> Result<Doc> {
+        let (_, path) = self.find_doc(doc_id)?;
+        let raw = fs::read_to_string(&path)?;
+        let (fm_raw, body) = split_frontmatter(&raw)?;
+        let mut fm: DocFrontmatter = serde_yaml::from_str(&fm_raw)?;
+        if fm.flashcard != Some(true) {
+            anyhow::bail!("doc {doc_id} is not a flashcard");
+        }
+        let mut ease = fm.card_ease.unwrap_or(2.5);
+        let prev_interval = fm.card_interval.unwrap_or(0.0);
+        let new_interval = match rating {
+            1 => { ease = (ease - 0.20).max(1.3); 0.0 }   // re-learn — due now-ish
+            2 => { ease = (ease - 0.15).max(1.3); (prev_interval.max(1.0)) * 1.2 }
+            3 => { if prev_interval == 0.0 { 1.0 } else { prev_interval * ease } }
+            4 => { ease += 0.10; if prev_interval == 0.0 { 2.0 } else { prev_interval * ease * 1.3 } }
+            _ => anyhow::bail!("rating must be 1..=4"),
+        };
+        let next_due = chrono::Utc::now() + chrono::Duration::seconds((new_interval * 86400.0) as i64);
+        fm.card_interval = Some(new_interval);
+        fm.card_ease     = Some(ease);
+        fm.card_due      = Some(next_due.to_rfc3339());
+        fm.updated_at    = chrono::Utc::now().to_rfc3339();
+        write_doc_file(&path, &fm, &body)?;
+        Ok(read_doc_file(&path, &self.root)?)
+    }
+
+    /// Cards whose `card_due` is now-or-earlier (or unset). Sorted oldest-due
+    /// first so the review queue surfaces stale cards before fresh ones.
+    pub fn list_due_cards(&self) -> Result<Vec<Doc>> {
+        let now = chrono::Utc::now();
+        let mut docs: Vec<Doc> = self.scan_docs(false)?
+            .into_iter()
+            .filter(|d| d.flashcard == Some(true) && !d.is_archived)
+            .filter(|d| match &d.card_due {
+                None => true,
+                Some(s) => chrono::DateTime::parse_from_rfc3339(s)
+                    .map(|t| t <= now).unwrap_or(true),
+            })
+            .collect();
+        docs.sort_by(|a, b| {
+            let ad = a.card_due.as_deref().unwrap_or("0");
+            let bd = b.card_due.as_deref().unwrap_or("0");
+            ad.cmp(bd)
+        });
+        Ok(docs)
+    }
+
+    pub fn list_all_cards(&self) -> Result<Vec<Doc>> {
+        let mut docs: Vec<Doc> = self.scan_docs(false)?
+            .into_iter()
+            .filter(|d| d.flashcard == Some(true) && !d.is_archived)
+            .collect();
+        docs.sort_by(|a, b| a.title.cmp(&b.title));
+        Ok(docs)
     }
 
     pub fn set_doc_sharing(&self, doc_id: &str, is_public: bool) -> Result<Doc> {
@@ -2364,6 +2465,14 @@ pub(crate) struct DocFrontmatter {
     pub parent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flashcard: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_due: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_interval: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_ease: Option<f64>,
     #[serde(default)]
     pub is_archived: bool,
     #[serde(default)]
@@ -2398,6 +2507,10 @@ fn read_doc_file(path: &Path, root: &Path) -> Result<Doc> {
         icon: fm.icon,
         parent_id: fm.parent_id,
         position: fm.position,
+        flashcard: fm.flashcard,
+        card_due: fm.card_due,
+        card_interval: fm.card_interval,
+        card_ease: fm.card_ease,
         created_at: Some(fm.created_at),
         updated_at: Some(fm.updated_at),
         is_archived: fm.is_archived,

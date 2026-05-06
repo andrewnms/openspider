@@ -19,6 +19,7 @@ export type ViewKind =
   | { kind: 'runs' }
   | { kind: 'settings' }
   | { kind: 'graph' }
+  | { kind: 'cards' }
 
 export type Tab = { id: string; title: string; icon?: string; view: ViewKind }
 export type RecentDoc = { id: string; title: string; icon?: string; openedAt: number }

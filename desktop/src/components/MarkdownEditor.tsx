@@ -172,6 +172,31 @@ function customSlashItems(editor: any): DefaultReactSuggestionItem[] {
       },
     },
     {
+      title: 'Block ref',
+      subtext: 'Insert ((title)) — embeds a reference to another doc',
+      aliases: ['ref', 'block', 'transclude', 'embed'],
+      group: 'Insert',
+      icon: <span style={{ fontSize: 14 }}>🔁</span>,
+      onItemClick: async () => {
+        const docs = await k.listAllDocs().catch(() => [])
+        if (docs.length === 0) {
+          await appAlert('No docs to reference yet. Create one first.')
+          return
+        }
+        const pick = await appPrompt(
+          'Type the exact title of the doc to embed-ref:',
+          docs[0].title,
+        )
+        if (!pick) return
+        const match = docs.find((d) => d.title.toLowerCase() === pick.toLowerCase())
+        if (!match) {
+          await appAlert(`No doc named "${pick}".`)
+          return
+        }
+        editor.insertInlineContent?.(`((${match.title})) `)
+      },
+    },
+    {
       title: 'Doc link',
       subtext: 'Insert a [[wiki link]] to another doc',
       aliases: ['link', 'doc', 'ref', 'wiki'],

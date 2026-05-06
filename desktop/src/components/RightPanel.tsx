@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { ListTree, Link2, Network, Cpu, Sparkles, Plus } from '../lib/icons'
+import { ListTree, Link2, Network, Cpu, Sparkles, Plus, Bookmark } from '../lib/icons'
 import { store, useStore } from '../store'
 import { useActiveEditor, useEditorTick } from '../lib/editorBus'
 import { k, type Agent, type Skill } from '../lib/mcp'
@@ -131,6 +131,12 @@ function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: str
 
       <div className="flex-1" />
 
+      <RailBtn
+        icon={<Bookmark size={16} />}
+        label="Review (flashcards)"
+        active={activeTab === '{"kind":"cards"}'}
+        onClick={() => store.open({ title: 'Review', icon: '📚', view: { kind: 'cards' } })}
+      />
       <RailBtn
         icon={<Network size={16} />}
         label="Graph"

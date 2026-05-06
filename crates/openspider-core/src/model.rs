@@ -124,6 +124,17 @@ pub struct Doc {
     /// at the end of the ordered set. Set by drag-drop / "Create above/below".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<f64>,
+    /// Flashcard state (per-doc, SM-2-style). When `flashcard` is true the
+    /// doc shows up in the review queue. Other three fields are SRS book-
+    /// keeping; None on a brand-new card means "due now, ease=2.5".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flashcard: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_due: Option<String>,    // ISO-8601, next review due
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_interval: Option<f64>,  // days until next review
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_ease: Option<f64>,      // SM-2 ease factor
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

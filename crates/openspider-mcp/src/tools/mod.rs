@@ -7,6 +7,7 @@
 
 pub mod agents;
 pub mod blocks;
+pub mod cards;
 pub mod credentials;
 pub mod databases;
 pub mod docs;
@@ -93,6 +94,12 @@ pub fn build_registry(s16_catalog_json: &str) -> anyhow::Result<Registry> {
     reg.register(Arc::new(docs::ListDocHistory));
     reg.register(Arc::new(docs::GetDocSnapshot));
     reg.register(Arc::new(docs::RestoreDocSnapshot));
+
+    // Flashcards / SRS (#122)
+    reg.register(Arc::new(cards::ListDueCards));
+    reg.register(Arc::new(cards::ListAllCards));
+    reg.register(Arc::new(cards::SetDocFlashcard));
+    reg.register(Arc::new(cards::ReviewCard));
 
     reg.register(Arc::new(search::SearchWorkspace));
 

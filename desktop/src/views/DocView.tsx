@@ -4,6 +4,7 @@ import { MoreHorizontal, Copy, FileText, Link2, FileQuestion, Clock } from '../l
 import { k, type Doc } from '../lib/mcp'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { HistoryPanelHost } from '../components/HistoryPanel'
+import { FlashcardToggle } from './CardsView'
 
 export function DocView({ docId }: { docId: string }) {
   const [doc, setDoc] = useState<Doc | null>(null)
@@ -151,6 +152,7 @@ export function DocView({ docId }: { docId: string }) {
                     onClick={() => copy('doc ID', doc.id)}
                   />
                   <div className="border-t my-1" style={{ borderColor: 'var(--color-border-soft)' }} />
+                  <FlashcardToggle doc={doc} onChanged={(next) => setDoc(next)} />
                   <CopyRow
                     icon={<Clock size={14} />}
                     label="History…"
