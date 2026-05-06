@@ -200,6 +200,12 @@ export const k = {
     call<Doc>('s16_set_doc_flashcard', { docId: id, isCard }),
   reviewCard: (id: string, rating: 1 | 2 | 3 | 4) =>
     call<Doc>('s16_review_card', { docId: id, rating }),
+
+  // Doc attributes (Bookmark / Aliases / Memo / Custom keys)
+  getDocAttrs:    (id: string) =>
+    call<Record<string, unknown>>('s16_get_doc_attrs', { docId: id }),
+  updateDocAttrs: (id: string, attrs: Record<string, unknown>) =>
+    call<Doc>('s16_update_doc_attrs', { docId: id, attrs }),
   moveDoc: (id: string, newParentId: string | null, position?: number | null) =>
     call<Doc>('s16_move_doc', {
       docId: id, newParentId,

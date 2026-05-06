@@ -2271,6 +2271,52 @@ impl Vault {
         Ok(docs)
     }
 
+    /// Merge an arbitrary JSON object into a doc's frontmatter and rewrite.
+    /// Used by the doc-attributes panel for Bookmark / Aliases / Memo /
+    /// Custom-keys without growing DocPatch with one Option-of-Option per
+    /// attr. Keys are written as-is (camelCase preserved); values can be
+    /// any YAML-serialisable JSON shape (string, bool, array, object).
+    /// Set a key to `null` to remove it from frontmatter.
+    pub fn update_doc_attrs(&self, doc_id: &str, attrs: serde_json::Value) -> Result<Doc> {
+        let (_, path) = self.find_doc(doc_id)?;
+        let raw = fs::read_to_string(&path)?;
+        let (fm_raw, body) = split_frontmatter(&raw)?;
+        let mut fm_map: serde_yaml::Mapping = serde_yaml::from_str(&fm_raw)?;
+        let attr_map = attrs.as_object()
+            .ok_or_else(|| anyhow::anyhow!("attrs must be a JSON object"))?;
+        for (k, v) in attr_map {
+            let key = serde_yaml::Value::String(k.clone());
+            if v.is_null() { fm_map.remove(&key); continue; }
+            let val: serde_yaml::Value = serde_yaml::from_str(&serde_json::to_string(v)?)?;
+            fm_map.insert(key, val);
+        }
+        // Bump updatedAt so the change shows up in any "recent" surfaces.
+        fm_map.insert(
+            serde_yaml::Value::String("updatedAt".into()),
+            serde_yaml::Value::String(chrono::Utc::now().to_rfc3339()),
+        );
+        let new_yaml = serde_yaml::to_string(&fm_map)?;
+        let body_trimmed = body.trim_end_matches('\n');
+        let out = if body_trimmed.is_empty() {
+            format!("---\n{new_yaml}---\n")
+        } else {
+            format!("---\n{new_yaml}---\n\n{body_trimmed}\n")
+        };
+        fs::write(&path, out)?;
+        Ok(read_doc_file(&path, &self.root)?)
+    }
+
+    /// Read the entire frontmatter as a JSON object — for the attributes
+    /// panel to display + edit unknown keys (custom attrs the user added).
+    pub fn get_doc_attrs(&self, doc_id: &str) -> Result<serde_json::Value> {
+        let (_, path) = self.find_doc(doc_id)?;
+        let raw = fs::read_to_string(&path)?;
+        let (fm_raw, _) = split_frontmatter(&raw)?;
+        let yaml: serde_yaml::Value = serde_yaml::from_str(&fm_raw)?;
+        let json: serde_json::Value = serde_json::to_value(yaml)?;
+        Ok(json)
+    }
+
     pub fn list_all_cards(&self) -> Result<Vec<Doc>> {
         let mut docs: Vec<Doc> = self.scan_docs(false)?
             .into_iter()

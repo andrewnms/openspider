@@ -4,6 +4,7 @@ import { MoreHorizontal, Copy, FileText, Link2, FileQuestion, Clock } from '../l
 import { k, type Doc } from '../lib/mcp'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { HistoryPanelHost } from '../components/HistoryPanel'
+import { AttrsPanelHost } from '../components/AttrsPanel'
 import { FlashcardToggle } from './CardsView'
 
 export function DocView({ docId }: { docId: string }) {
@@ -14,6 +15,7 @@ export function DocView({ docId }: { docId: string }) {
   const [copyMenu, setCopyMenu] = useState(false)
   const [copyToast, setCopyToast] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [attrsOpen,   setAttrsOpen]   = useState(false)
   const dirtyRef = useRef(false)
   const titleRef = useRef('')
   const menuRef  = useRef<HTMLDivElement>(null)
@@ -29,6 +31,27 @@ export function DocView({ docId }: { docId: string }) {
     }).catch((e) => { if (alive) setError(e?.message ?? String(e)) })
     return () => { alive = false }
   }, [docId])
+
+  // Block menu's "Make flashcard" → bubble it up to the doc by listening
+  // for a CustomEvent. Block-level cards aren't a thing yet, so any block-
+  // menu invocation promotes the whole doc to the review queue.
+  useEffect(() => {
+    if (!doc) return
+    const onMakeCard = async () => {
+      try {
+        const updated = await k.setDocFlashcard(doc.id, true)
+        setDoc(updated)
+        window.dispatchEvent(new CustomEvent('os:toast', { detail: 'Added to review queue' }))
+      } catch (e) { console.error('make flashcard failed', e) }
+    }
+    const onOpenAttrs = () => setAttrsOpen(true)
+    window.addEventListener('os:make-flashcard', onMakeCard)
+    window.addEventListener('os:open-attrs',     onOpenAttrs)
+    return () => {
+      window.removeEventListener('os:make-flashcard', onMakeCard)
+      window.removeEventListener('os:open-attrs',     onOpenAttrs)
+    }
+  }, [doc])
 
   // Click-outside / Esc to close the copy menu.
   useEffect(() => {
@@ -154,6 +177,12 @@ export function DocView({ docId }: { docId: string }) {
                   <div className="border-t my-1" style={{ borderColor: 'var(--color-border-soft)' }} />
                   <FlashcardToggle doc={doc} onChanged={(next) => setDoc(next)} />
                   <CopyRow
+                    icon={<FileText size={14} />}
+                    label="Attributes…"
+                    sub="Bookmark / Aliases / Memo / Custom"
+                    onClick={() => { setCopyMenu(false); setAttrsOpen(true) }}
+                  />
+                  <CopyRow
                     icon={<Clock size={14} />}
                     label="History…"
                     sub="Browse + restore previous versions"
@@ -175,6 +204,12 @@ export function DocView({ docId }: { docId: string }) {
           placeholder="Start writing… (try [[Page Name]] for wiki links)"
         />
       </div>
+
+      <AttrsPanelHost
+        open={attrsOpen}
+        docId={doc.id}
+        onClose={() => setAttrsOpen(false)}
+      />
 
       <HistoryPanelHost
         open={historyOpen}

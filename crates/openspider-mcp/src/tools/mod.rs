@@ -94,6 +94,8 @@ pub fn build_registry(s16_catalog_json: &str) -> anyhow::Result<Registry> {
     reg.register(Arc::new(docs::ListDocHistory));
     reg.register(Arc::new(docs::GetDocSnapshot));
     reg.register(Arc::new(docs::RestoreDocSnapshot));
+    reg.register(Arc::new(docs::GetDocAttrs));
+    reg.register(Arc::new(docs::UpdateDocAttrs));
 
     // Flashcards / SRS (#122)
     reg.register(Arc::new(cards::ListDueCards));

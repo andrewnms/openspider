@@ -327,6 +327,45 @@ impl Tool for DeleteDocPermanently {
     }
 }
 
+/* ────────── Doc attributes (Bookmark / Aliases / Memo / Custom) ───── */
+
+pub struct GetDocAttrs;
+#[async_trait]
+impl Tool for GetDocAttrs {
+    fn name(&self) -> &'static str { "s16_get_doc_attrs" }
+    fn description(&self) -> &'static str { "Read the full frontmatter of a doc as a JSON object — for the attributes panel." }
+    fn input_schema(&self) -> Value {
+        json!({ "type": "object", "required": ["docId"], "properties": { "docId": { "type": "string" } } })
+    }
+    async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
+        let id = sarg(&args, "docId")?;
+        Ok(state.vault.get_doc_attrs(&id)?)
+    }
+}
+
+pub struct UpdateDocAttrs;
+#[async_trait]
+impl Tool for UpdateDocAttrs {
+    fn name(&self) -> &'static str { "s16_update_doc_attrs" }
+    fn description(&self) -> &'static str { "Merge a JSON object into a doc's frontmatter. Set a key to null to remove it. Used by the attributes panel." }
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "required": ["docId", "attrs"],
+            "properties": {
+                "docId": { "type": "string" },
+                "attrs": { "type": "object" }
+            }
+        })
+    }
+    async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
+        let id = sarg(&args, "docId")?;
+        let attrs = args.get("attrs").cloned()
+            .ok_or_else(|| anyhow!("missing attrs object"))?;
+        Ok(serde_json::to_value(state.vault.update_doc_attrs(&id, attrs)?)?)
+    }
+}
+
 /* ────────── Doc history (snapshots + restore) ─────────────────────── */
 
 pub struct ListDocHistory;

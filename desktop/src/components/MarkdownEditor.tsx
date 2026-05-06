@@ -23,6 +23,7 @@ import { filterSuggestionItems } from '@blocknote/core'
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/mantine/style.css'
 import { setActiveEditor, pingEditorContent } from '../lib/editorBus'
+import { BlockMenuOverlay } from './BlockMenuOverlay'
 import { useStore, store } from '../store'
 import { k } from '../lib/mcp'
 import { isAIConfigured } from '../lib/ai'
@@ -78,6 +79,28 @@ export function MarkdownEditor({
     return () => { setActiveEditor(null) }
   }, [editor])
 
+  // Intercept clicks on openspider:// links so the host doesn't try to
+  // navigate the WebView. Route to the matching doc tab instead. Capture
+  // phase so the editor's own link handler doesn't open it externally.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const t = e.target as HTMLElement | null
+      const a = t?.closest('a[href^="openspider://"]') as HTMLAnchorElement | null
+      if (!a) return
+      e.preventDefault(); e.stopPropagation()
+      const href = a.getAttribute('href') ?? ''
+      const m = href.match(/^openspider:\/\/doc\/([\w-]+)$/)
+      if (m) {
+        const docId = m[1]
+        k.getDoc(docId).then((d) => {
+          store.open({ title: d.title, icon: d.icon, view: { kind: 'doc', docId: d.id } })
+        }).catch(() => { /* gone — silently ignore */ })
+      }
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [])
+
   // Build the merged slash-menu item list. Defaults from BlockNote + the
   // custom additions defined below. Memoized via useCallback because
   // SuggestionMenuController calls it on every keystroke.
@@ -97,6 +120,10 @@ export function MarkdownEditor({
           getItems={getSlashItems}
         />
       </BlockNoteView>
+      {/* Custom per-block context menu — hover handle + right-click. Sits
+         OUTSIDE BlockNoteView so its own SideMenu/SelectionToolbar layout
+         is untouched; we just float our own UI on top via portals. */}
+      <BlockMenuOverlay />
     </div>
   )
 }
@@ -173,7 +200,7 @@ function customSlashItems(editor: any): DefaultReactSuggestionItem[] {
     },
     {
       title: 'Block ref',
-      subtext: 'Insert ((title)) — embeds a reference to another doc',
+      subtext: 'Insert ((title)) as a clickable inline pill',
       aliases: ['ref', 'block', 'transclude', 'embed'],
       group: 'Insert',
       icon: <span style={{ fontSize: 14 }}>🔁</span>,
@@ -193,7 +220,16 @@ function customSlashItems(editor: any): DefaultReactSuggestionItem[] {
           await appAlert(`No doc named "${pick}".`)
           return
         }
-        editor.insertInlineContent?.(`((${match.title})) `)
+        // Insert as a link so BlockNote treats it as a stable inline node
+        // rather than free text that breaks across edits. The link's URL
+        // carries the doc id (so the resolver can route on click), while
+        // the visible text follows the ((title)) convention so the
+        // backend's backlinks scanner picks it up the same as plain refs.
+        editor.insertInlineContent?.([
+          { type: 'link', href: `openspider://doc/${match.id}`,
+            content: `((${match.title}))` },
+          { type: 'text', text: ' ', styles: {} },
+        ])
       },
     },
     {
