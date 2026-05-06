@@ -23,6 +23,9 @@ const DRAG_MIME    = 'application/x-openspider-doc'
 
 type Node = Doc & { children: Node[] }
 
+type DropPos = 'above' | 'into' | 'below'
+type DropIndicator = { id: string; pos: DropPos } | { id: 'root'; pos: 'into' } | null
+
 export function DocTree({ activeTabId, refreshTick }: {
   activeTabId: string | null
   refreshTick: number
@@ -32,7 +35,7 @@ export function DocTree({ activeTabId, refreshTick }: {
   // Active drag — null when nothing's being dragged. We mirror this in a ref
   // so DOM event handlers see the latest value without stale closures.
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dropTarget, setDropTarget] = useState<string | 'root' | null>(null)
+  const [drop, setDrop] = useState<DropIndicator>(null)
   const draggedIdRef = useRef<string | null>(null)
   draggedIdRef.current = draggedId
 
@@ -91,21 +94,19 @@ export function DocTree({ activeTabId, refreshTick }: {
   }
 
   /** Move `draggedId` under `targetId` (or to root if `targetId` is null). */
-  async function performMove(targetId: string | null) {
+  async function performMove(targetParentId: string | null) {
     const id = draggedIdRef.current
     if (!id) return
-    // Cycle prevention: target can't be the dragged node itself or any of
-    // its descendants — that would create an infinite loop in the tree.
-    if (id === targetId) return
-    if (targetId && descendantsOf.get(id)?.has(targetId)) return
+    if (id === targetParentId) return
+    if (targetParentId && descendantsOf.get(id)?.has(targetParentId)) return
     // Optimistic UI — flip the parent locally, then call the server.
-    setDocs((xs) => xs.map((d) => d.id === id ? { ...d, parentId: targetId } : d))
-    if (targetId) {
+    setDocs((xs) => xs.map((d) => d.id === id ? { ...d, parentId: targetParentId } : d))
+    if (targetParentId) {
       setExpanded((prev) => {
-        const next = new Set(prev); next.add(targetId); saveExpanded(next); return next
+        const next = new Set(prev); next.add(targetParentId); saveExpanded(next); return next
       })
     }
-    try { await k.moveDoc(id, targetId) }
+    try { await k.moveDoc(id, targetParentId) }
     catch (e) { console.error('move failed', e) /* could re-fetch to recover */ }
   }
 
@@ -115,15 +116,23 @@ export function DocTree({ activeTabId, refreshTick }: {
     return !descendantsOf.get(id)?.has(targetId)
   }
 
+  /** Translate a drop position on a target row into the resulting parent id.
+   *  - 'into'  → become a CHILD of the target
+   *  - 'above'/'below' → become a SIBLING of the target (parent = target.parentId) */
+  function resolveDropParent(target: Doc, pos: DropPos): string | null {
+    if (pos === 'into')  return target.id
+    return target.parentId ?? null
+  }
+
   function onRootDragOver(e: React.DragEvent) {
     if (!draggedIdRef.current) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setDropTarget('root')
+    setDrop({ id: 'root', pos: 'into' })
   }
   async function onRootDrop(e: React.DragEvent) {
     e.preventDefault()
-    setDropTarget(null)
+    setDrop(null)
     const id = e.dataTransfer.getData(DRAG_MIME) || draggedIdRef.current
     if (!id) return
     await performMove(null)
@@ -131,7 +140,7 @@ export function DocTree({ activeTabId, refreshTick }: {
   }
 
   return (
-    <div onDragLeave={() => setDropTarget(null)}>
+    <div onDragLeave={() => setDrop(null)}>
       {tree.map((n) => (
         <NodeRow
           key={n.id}
@@ -140,17 +149,18 @@ export function DocTree({ activeTabId, refreshTick }: {
           activeTabId={activeTabId}
           expanded={expanded}
           draggedId={draggedId}
-          dropTarget={dropTarget}
+          drop={drop}
           onToggle={toggle}
           onCreateSub={createSub}
           onRename={rename}
           onMoveToRoot={moveToRoot}
           onDelete={remove}
           onDragStart={(id) => setDraggedId(id)}
-          onDragEnd={() => { setDraggedId(null); setDropTarget(null) }}
-          onSetDropTarget={setDropTarget}
+          onDragEnd={() => { setDraggedId(null); setDrop(null) }}
+          onSetDrop={setDrop}
           onValidateTarget={isValidTarget}
           onPerformMove={performMove}
+          onResolveDropParent={resolveDropParent}
         />
       ))}
 
@@ -160,8 +170,8 @@ export function DocTree({ activeTabId, refreshTick }: {
         onDragOver={onRootDragOver}
         onDrop={onRootDrop}
         style={{
-          background: dropTarget === 'root' ? 'var(--color-accent-soft)' : 'transparent',
-          outline:    dropTarget === 'root' ? '1px dashed var(--color-accent)' : 'none',
+          background: drop?.id === 'root' ? 'var(--color-accent-soft)' : 'transparent',
+          outline:    drop?.id === 'root' ? '1px dashed var(--color-accent)' : 'none',
           borderRadius: 6,
           marginTop: 4,
         }}
@@ -180,16 +190,16 @@ export function DocTree({ activeTabId, refreshTick }: {
 }
 
 function NodeRow({
-  node, depth, activeTabId, expanded, draggedId, dropTarget,
+  node, depth, activeTabId, expanded, draggedId, drop,
   onToggle, onCreateSub, onRename, onMoveToRoot, onDelete,
-  onDragStart, onDragEnd, onSetDropTarget, onValidateTarget, onPerformMove,
+  onDragStart, onDragEnd, onSetDrop, onValidateTarget, onPerformMove, onResolveDropParent,
 }: {
   node: Node
   depth: number
   activeTabId: string | null
   expanded: Set<string>
   draggedId: string | null
-  dropTarget: string | 'root' | null
+  drop: DropIndicator
   onToggle:        (id: string) => void
   onCreateSub:     (parent: Doc) => void
   onRename:        (doc: Doc) => void
@@ -197,12 +207,14 @@ function NodeRow({
   onDelete:        (doc: Doc) => void
   onDragStart:     (id: string) => void
   onDragEnd:       () => void
-  onSetDropTarget: (id: string | 'root' | null) => void
+  onSetDrop:       (d: DropIndicator) => void
   onValidateTarget:(id: string) => boolean
-  onPerformMove:   (targetId: string) => Promise<void>
+  onPerformMove:   (targetParentId: string | null) => Promise<void>
+  onResolveDropParent: (target: Doc, pos: DropPos) => string | null
 }) {
   const [hover, setHover] = useState(false)
   const [menu, setMenu]   = useState<{ x: number; y: number } | null>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
 
   const id = JSON.stringify({ kind: 'doc', docId: node.id })
   const active = activeTabId === id
@@ -210,12 +222,23 @@ function NodeRow({
   const hasChildren = node.children.length > 0
   const indent = 6 + depth * 18
 
-  const isDragging = draggedId === node.id
-  const isDropTarget = dropTarget === node.id
+  const isDragging   = draggedId === node.id
+  const myDrop       = drop && drop.id === node.id ? drop.pos : null
+  const showInto     = myDrop === 'into'
+  const showAbove    = myDrop === 'above'
+  const showBelow    = myDrop === 'below'
 
   function onDragStartRow(e: React.DragEvent) {
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData(DRAG_MIME, node.id)
+    // Replace the browser's default ghost (which looks like a generic file
+    // upload) with a slim styled pill that says "I'm reorganising, not
+    // importing." We render it offscreen, set it as the drag image, then let
+    // the next tick clean it up.
+    const pill = makeDragPill(node.title, node.icon)
+    document.body.appendChild(pill)
+    e.dataTransfer.setDragImage(pill, 12, 14)
+    setTimeout(() => pill.remove(), 0)
     onDragStart(node.id)
   }
   function onDragOverRow(e: React.DragEvent) {
@@ -223,23 +246,35 @@ function NodeRow({
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'move'
-    onSetDropTarget(node.id)
+    // Split the row into thirds to decide above / into / below — tighter
+    // edges (top/bottom 25%) than middle so "into" is the default for
+    // "I clearly hovered over this".
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const ratio = (e.clientY - r.top) / r.height
+    const pos: DropPos = ratio < 0.25 ? 'above' : ratio > 0.75 ? 'below' : 'into'
+    onSetDrop({ id: node.id, pos })
   }
   async function onDropRow(e: React.DragEvent) {
     e.preventDefault()
     e.stopPropagation()
-    onSetDropTarget(null)
     if (!draggedId || !onValidateTarget(node.id)) {
-      onDragEnd()
+      onSetDrop(null); onDragEnd()
       return
     }
-    await onPerformMove(node.id)
+    const pos: DropPos = myDrop ?? 'into'
+    const targetParent = onResolveDropParent(node, pos)
+    onSetDrop(null)
+    await onPerformMove(targetParent)
     onDragEnd()
   }
 
   return (
     <div>
+      {/* Indicator line: drop ABOVE this row */}
+      {showAbove && <DropLine indent={indent} />}
+
       <div
+        ref={rowRef}
         draggable
         onDragStart={onDragStartRow}
         onDragEnd={onDragEnd}
@@ -250,11 +285,11 @@ function NodeRow({
         onMouseLeave={() => { setHover(false); setMenu(null) }}
         style={{
           background:
-            isDropTarget ? 'var(--color-accent-soft)' :
-            active       ? 'var(--color-accent-soft)' :
+            showInto    ? 'var(--color-accent-soft)' :
+            active      ? 'var(--color-accent-soft)' :
             'transparent',
-          outline: isDropTarget ? '1px dashed var(--color-accent)' : 'none',
-          opacity: isDragging ? 0.4 : 1,
+          outline: showInto ? '1px solid var(--color-accent)' : 'none',
+          opacity: isDragging ? 0.35 : 1,
           minHeight: 30,
           cursor: 'pointer',
         }}
@@ -345,6 +380,9 @@ function NodeRow({
         )}
       </div>
 
+      {/* Indicator line: drop BELOW this row */}
+      {showBelow && <DropLine indent={indent} />}
+
       <AnimatePresence initial={false}>
         {isOpen && hasChildren && (
           <motion.div
@@ -362,7 +400,7 @@ function NodeRow({
                 activeTabId={activeTabId}
                 expanded={expanded}
                 draggedId={draggedId}
-                dropTarget={dropTarget}
+                drop={drop}
                 onToggle={onToggle}
                 onCreateSub={onCreateSub}
                 onRename={onRename}
@@ -370,9 +408,10 @@ function NodeRow({
                 onDelete={onDelete}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
-                onSetDropTarget={onSetDropTarget}
+                onSetDrop={onSetDrop}
                 onValidateTarget={onValidateTarget}
                 onPerformMove={onPerformMove}
+                onResolveDropParent={onResolveDropParent}
               />
             ))}
           </motion.div>
@@ -486,4 +525,72 @@ function loadExpanded(): Set<string> {
 }
 function saveExpanded(s: Set<string>) {
   try { localStorage.setItem(EXPANDED_KEY, JSON.stringify(Array.from(s))) } catch { /* */ }
+}
+
+/* ────────── Drop indicator line ─────────────────────────────────────
+   Thin accent-coloured line that sits between rows when the drop position
+   is `above` or `below`. The leading dot is just for visual punctuation —
+   makes the line read as an INSERTION POINT, not a divider. */
+function DropLine({ indent }: { indent: number }) {
+  return (
+    <div
+      style={{
+        position: 'relative',
+        height: 0,
+        marginLeft: indent + 18,
+        marginRight: 6,
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: 0, right: 0,
+          top: -1,
+          height: 2,
+          background: 'var(--color-accent)',
+          borderRadius: 1,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: -3,
+          top: -4,
+          width: 8, height: 8,
+          borderRadius: 999,
+          background: 'var(--color-accent)',
+          boxShadow: '0 0 0 2px var(--color-bg-soft)',
+        }}
+      />
+    </div>
+  )
+}
+
+/* ────────── Custom drag preview ─────────────────────────────────────
+   Replaces the browser's bulky default ghost (which makes drags look like
+   "I'm uploading a file from Finder"). We render a slim pill once,
+   `setDragImage()` it, then remove on the next tick — the pill only
+   exists for the snapshot that the OS captures. */
+function makeDragPill(title: string, icon?: string): HTMLDivElement {
+  const el = document.createElement('div')
+  // Off-screen so the user never sees the live element — only the captured
+  // image follows the cursor.
+  el.style.cssText = `
+    position: fixed; top: -9999px; left: -9999px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    background: #1c1917;
+    color: #fff;
+    border-radius: 6px;
+    font: 500 13px/1 Inter, system-ui, sans-serif;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.4);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  `
+  el.textContent = `${icon ?? '📄'}  ${title}`
+  return el
 }
