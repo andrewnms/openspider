@@ -90,6 +90,9 @@ pub fn build_registry(s16_catalog_json: &str) -> anyhow::Result<Registry> {
     reg.register(Arc::new(docs::DeleteDoc));
     reg.register(Arc::new(docs::RestoreDoc));
     reg.register(Arc::new(docs::DeleteDocPermanently));
+    reg.register(Arc::new(docs::ListDocHistory));
+    reg.register(Arc::new(docs::GetDocSnapshot));
+    reg.register(Arc::new(docs::RestoreDocSnapshot));
 
     reg.register(Arc::new(search::SearchWorkspace));
 

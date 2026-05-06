@@ -1946,6 +1946,7 @@ fn sanitize_filename(s: &str) -> String {
 
 const DOCS_DIR: &str = "docs";
 const TRASH_DIR: &str = "docs/_trash";
+const HISTORY_DIR: &str = "docs/_history";
 
 #[derive(Debug, Clone, Default)]
 pub struct DocPatch {
@@ -2096,8 +2097,86 @@ impl Vault {
     }
 
     pub fn update_doc_content(&self, doc_id: &str, content: &str, _format: &str) -> Result<()> {
+        // Snapshot the OLD content before overwriting — but only if the
+        // content actually changed and the most recent snapshot is older
+        // than 60s. This caps history at one snapshot per minute per doc,
+        // which is plenty for "oops, I deleted a paragraph" recovery
+        // without ballooning the vault on every keystroke autosave.
+        if let Ok((_, current)) = self.find_doc(doc_id) {
+            if let Ok(raw) = fs::read_to_string(&current) {
+                if let Ok((_, body)) = split_frontmatter(&raw) {
+                    if body.trim() != content.trim() && self.should_snapshot(doc_id, 60) {
+                        let _ = self.write_history_snapshot(doc_id, &raw);
+                    }
+                }
+            }
+        }
         self.update_doc(doc_id, DocPatch { content_md: Some(content.to_string()), ..Default::default() })?;
         Ok(())
+    }
+
+    /// Returns true when the most-recent snapshot for `doc_id` is older
+    /// than `min_age_seconds` (or no snapshots exist yet).
+    fn should_snapshot(&self, doc_id: &str, min_age_seconds: i64) -> bool {
+        let dir = self.root.join(HISTORY_DIR).join(doc_id);
+        let Ok(entries) = fs::read_dir(&dir) else { return true };
+        let latest = entries.flatten().filter_map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            let stem = name.strip_suffix(".md")?.to_string();
+            chrono::DateTime::parse_from_rfc3339(&stem.replace('_', ":")).ok()
+        }).max();
+        match latest {
+            Some(t) => (chrono::Utc::now().timestamp() - t.timestamp()) >= min_age_seconds,
+            None => true,
+        }
+    }
+
+    fn write_history_snapshot(&self, doc_id: &str, raw_content: &str) -> Result<String> {
+        let dir = self.root.join(HISTORY_DIR).join(doc_id);
+        fs::create_dir_all(&dir)?;
+        // Colon is illegal on macOS APFS in some contexts (and ugly in URLs).
+        // Use `_` as separator so the filename is portable AND parseable
+        // back into a DateTime by replacing `_` with `:` on read.
+        let stamp = chrono::Utc::now().to_rfc3339().replace(':', "_");
+        let path = dir.join(format!("{stamp}.md"));
+        fs::write(&path, raw_content)?;
+        Ok(stamp)
+    }
+
+    /// List snapshot timestamps for a doc, newest first. Returns ISO-8601
+    /// strings (with `:` restored) so they can be passed back to the
+    /// get/restore tools without conversion gymnastics on the client.
+    pub fn list_doc_history(&self, doc_id: &str) -> Result<Vec<String>> {
+        let dir = self.root.join(HISTORY_DIR).join(doc_id);
+        let Ok(entries) = fs::read_dir(&dir) else { return Ok(vec![]) };
+        let mut stamps: Vec<String> = entries.flatten().filter_map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            let stem = name.strip_suffix(".md")?.to_string();
+            Some(stem.replace('_', ":"))
+        }).collect();
+        stamps.sort_by(|a, b| b.cmp(a));
+        Ok(stamps)
+    }
+
+    pub fn get_doc_snapshot(&self, doc_id: &str, timestamp: &str) -> Result<String> {
+        let dir = self.root.join(HISTORY_DIR).join(doc_id);
+        let path = dir.join(format!("{}.md", timestamp.replace(':', "_")));
+        let raw = fs::read_to_string(&path)
+            .with_context(|| format!("snapshot not found: {timestamp}"))?;
+        let (_, body) = split_frontmatter(&raw)?;
+        Ok(body)
+    }
+
+    pub fn restore_doc_snapshot(&self, doc_id: &str, timestamp: &str) -> Result<Doc> {
+        // Snapshot the CURRENT content before restoring so the restore
+        // itself is reversible (you can always restore-the-restore).
+        if let Ok((_, current_path)) = self.find_doc(doc_id) {
+            if let Ok(raw) = fs::read_to_string(&current_path) {
+                let _ = self.write_history_snapshot(doc_id, &raw);
+            }
+        }
+        let body = self.get_doc_snapshot(doc_id, timestamp)?;
+        self.update_doc(doc_id, DocPatch { content_md: Some(body), ..Default::default() })
     }
 
     pub fn set_doc_sharing(&self, doc_id: &str, is_public: bool) -> Result<Doc> {

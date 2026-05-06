@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { MoreHorizontal, Copy, FileText, Link2, FileQuestion } from '../lib/icons'
+import { MoreHorizontal, Copy, FileText, Link2, FileQuestion, Clock } from '../lib/icons'
 import { k, type Doc } from '../lib/mcp'
 import { MarkdownEditor } from '../components/MarkdownEditor'
+import { HistoryPanelHost } from '../components/HistoryPanel'
 
 export function DocView({ docId }: { docId: string }) {
   const [doc, setDoc] = useState<Doc | null>(null)
@@ -11,6 +12,7 @@ export function DocView({ docId }: { docId: string }) {
   const [error, setError]   = useState<string | null>(null)
   const [copyMenu, setCopyMenu] = useState(false)
   const [copyToast, setCopyToast] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const dirtyRef = useRef(false)
   const titleRef = useRef('')
   const menuRef  = useRef<HTMLDivElement>(null)
@@ -148,6 +150,13 @@ export function DocView({ docId }: { docId: string }) {
                     sub={doc.id}
                     onClick={() => copy('doc ID', doc.id)}
                   />
+                  <div className="border-t my-1" style={{ borderColor: 'var(--color-border-soft)' }} />
+                  <CopyRow
+                    icon={<Clock size={14} />}
+                    label="History…"
+                    sub="Browse + restore previous versions"
+                    onClick={() => { setCopyMenu(false); setHistoryOpen(true) }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -164,6 +173,20 @@ export function DocView({ docId }: { docId: string }) {
           placeholder="Start writing… (try [[Page Name]] for wiki links)"
         />
       </div>
+
+      <HistoryPanelHost
+        open={historyOpen}
+        docId={doc.id}
+        docTitle={doc.title}
+        onClose={() => setHistoryOpen(false)}
+        onRestored={() => {
+          // Refetch the body — k.getDocContent returns html, we feed it
+          // back through the same htmlToMd path the original load uses.
+          k.getDocContent(doc.id).then((html) => {
+            setContent(htmlToMd(typeof html === 'string' ? html : ''))
+          }).catch((e) => console.error('post-restore refetch failed', e))
+        }}
+      />
 
       {/* Toast — bottom-right pop on copy actions */}
       <AnimatePresence>

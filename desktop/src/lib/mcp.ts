@@ -179,6 +179,14 @@ export const k = {
     call<{ ok: true }>('s16_update_doc_content', { docId: id, content, contentFormat: 'markdown' }),
   deleteDoc: (id: string) => call<{ ok: true }>('s16_delete_doc', { docId: id }),
   duplicateDoc: (id: string) => call<Doc>('s16_duplicate_doc', { docId: id }),
+  // History — auto-snapshots + restore. Snapshot is captured server-side
+  // when content changes and the most recent snapshot is older than 60s.
+  listDocHistory:    (id: string) =>
+    call<{ items: string[] }>('s16_list_doc_history', { docId: id }),
+  getDocSnapshot:    (id: string, timestamp: string) =>
+    call<{ content: string }>('s16_get_doc_snapshot', { docId: id, timestamp }),
+  restoreDocSnapshot:(id: string, timestamp: string) =>
+    call<Doc>('s16_restore_doc_snapshot', { docId: id, timestamp }),
   moveDoc: (id: string, newParentId: string | null, position?: number | null) =>
     call<Doc>('s16_move_doc', {
       docId: id, newParentId,

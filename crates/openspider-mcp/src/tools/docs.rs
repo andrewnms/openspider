@@ -327,6 +327,68 @@ impl Tool for DeleteDocPermanently {
     }
 }
 
+/* ────────── Doc history (snapshots + restore) ─────────────────────── */
+
+pub struct ListDocHistory;
+#[async_trait]
+impl Tool for ListDocHistory {
+    fn name(&self) -> &'static str { "s16_list_doc_history" }
+    fn description(&self) -> &'static str { "List snapshot timestamps for a doc, newest first. Snapshots are auto-captured on content change with a 60s throttle." }
+    fn input_schema(&self) -> Value {
+        json!({ "type": "object", "required": ["docId"], "properties": { "docId": { "type": "string" } } })
+    }
+    async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
+        let id = sarg(&args, "docId")?;
+        let stamps = state.vault.list_doc_history(&id)?;
+        Ok(json!({ "items": stamps }))
+    }
+}
+
+pub struct GetDocSnapshot;
+#[async_trait]
+impl Tool for GetDocSnapshot {
+    fn name(&self) -> &'static str { "s16_get_doc_snapshot" }
+    fn description(&self) -> &'static str { "Get the body of a single snapshot by its ISO-8601 timestamp." }
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "required": ["docId", "timestamp"],
+            "properties": {
+                "docId": { "type": "string" },
+                "timestamp": { "type": "string" }
+            }
+        })
+    }
+    async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
+        let id = sarg(&args, "docId")?;
+        let ts = sarg(&args, "timestamp")?;
+        let body = state.vault.get_doc_snapshot(&id, &ts)?;
+        Ok(json!({ "content": body }))
+    }
+}
+
+pub struct RestoreDocSnapshot;
+#[async_trait]
+impl Tool for RestoreDocSnapshot {
+    fn name(&self) -> &'static str { "s16_restore_doc_snapshot" }
+    fn description(&self) -> &'static str { "Restore a doc to a previous snapshot. Snapshots the CURRENT content first so the restore itself is reversible." }
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "required": ["docId", "timestamp"],
+            "properties": {
+                "docId": { "type": "string" },
+                "timestamp": { "type": "string" }
+            }
+        })
+    }
+    async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
+        let id = sarg(&args, "docId")?;
+        let ts = sarg(&args, "timestamp")?;
+        Ok(serde_json::to_value(state.vault.restore_doc_snapshot(&id, &ts)?)?)
+    }
+}
+
 fn sarg(args: &Value, key: &str) -> Result<String> {
     args.get(key).and_then(|v| v.as_str()).map(String::from)
         .ok_or_else(|| anyhow!("missing required string arg: {key}"))
