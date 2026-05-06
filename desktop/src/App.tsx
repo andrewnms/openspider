@@ -24,6 +24,7 @@ import { RunsView } from './views/RunsView'
 import { SettingsView } from './views/SettingsView'
 import { GraphView } from './views/GraphView'
 import { CardsView } from './views/CardsView'
+import { ImportView } from './views/ImportView'
 
 export default function App() {
   const tabs        = useStore((s) => s.tabs)
@@ -93,6 +94,7 @@ export default function App() {
             {active?.view.kind === 'settings' && <SettingsView />}
             {active?.view.kind === 'graph'    && <GraphView />}
             {active?.view.kind === 'cards'    && <CardsView />}
+            {active?.view.kind === 'import'   && <ImportView />}
           </div>
         </main>
         <RightPanel />

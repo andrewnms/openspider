@@ -131,6 +131,15 @@ export function HomeView() {
           />
 
           <SectionCard
+            icon={<Sparkles size={18} />}
+            title="Import"
+            count={undefined}
+            empty="Bulk-create docs from JSON / NDJSON / chat exports."
+            createLabel="Open import"
+            onCreate={() => store.open({ title: 'Import', icon: '📥', view: { kind: 'import' } })}
+          />
+
+          <SectionCard
             icon={<Activity size={18} />}
             title="Runs"
             count={runs?.length}
