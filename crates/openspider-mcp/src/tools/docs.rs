@@ -189,6 +189,7 @@ impl Tool for UpdateDoc {
             title: args.get("title").and_then(|v| v.as_str()).map(String::from),
             icon: args.get("icon").and_then(|v| v.as_str()).map(String::from),
             parent_id: None, // update doesn't move; use s16_move_doc for that
+            position:  None, // ditto for sibling position
             content_md: args.get("content").and_then(|v| v.as_str()).map(String::from),
         };
         Ok(serde_json::to_value(state.vault.update_doc(&id, patch)?)?)
@@ -246,21 +247,25 @@ pub struct MoveDoc;
 #[async_trait]
 impl Tool for MoveDoc {
     fn name(&self) -> &'static str { "s16_move_doc" }
-    fn description(&self) -> &'static str { "Move a doc to a new parent. newParentId = null moves to root." }
+    fn description(&self) -> &'static str { "Move a doc to a new parent and/or sibling position. newParentId = null moves to root. position is a sibling-order key (lower = earlier); omit to clear." }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
             "required": ["docId"],
             "properties": {
                 "docId":       { "type": "string" },
-                "newParentId": { "type": ["string", "null"] }
+                "newParentId": { "type": ["string", "null"] },
+                "position":    { "type": ["number", "null"] }
             }
         })
     }
     async fn call(&self, state: &AppState, args: Value) -> Result<Value> {
         let id = sarg(&args, "docId")?;
         let new_parent = args.get("newParentId").and_then(|v| v.as_str()).map(String::from);
-        Ok(serde_json::to_value(state.vault.move_doc(&id, new_parent)?)?)
+        // `position` is fully nullable: explicit null OR missing both clear it
+        // back to alphabetical-fallback. A finite f64 sets the order key.
+        let new_position = args.get("position").and_then(|v| v.as_f64());
+        Ok(serde_json::to_value(state.vault.move_doc(&id, new_parent, new_position)?)?)
     }
 }
 

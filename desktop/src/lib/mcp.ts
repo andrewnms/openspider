@@ -100,6 +100,9 @@ export type Page = {
 }
 export type Doc = {
   id: string; title: string; icon?: string; parentId?: string | null
+  /** Sibling-order key. Lower = earlier. Undefined = falls back to alphabetical
+   *  at the end of the ordered set. Set via drag-drop / "Create above/below". */
+  position?: number | null
   isArchived?: boolean; isPublic?: boolean; shareId?: string | null
   createdAt?: string; updatedAt?: string
 }
@@ -175,8 +178,15 @@ export const k = {
   updateDocContent: (id: string, content: string) =>
     call<{ ok: true }>('s16_update_doc_content', { docId: id, content, contentFormat: 'markdown' }),
   deleteDoc: (id: string) => call<{ ok: true }>('s16_delete_doc', { docId: id }),
-  moveDoc: (id: string, newParentId: string | null) =>
-    call<Doc>('s16_move_doc', { docId: id, newParentId }),
+  duplicateDoc: (id: string) => call<Doc>('s16_duplicate_doc', { docId: id }),
+  moveDoc: (id: string, newParentId: string | null, position?: number | null) =>
+    call<Doc>('s16_move_doc', {
+      docId: id, newParentId,
+      // Only forward `position` when caller specified one. Undefined leaves
+      // the existing key untouched on the backend; null clears it back to
+      // alphabetical-fallback ordering.
+      ...(position === undefined ? {} : { position }),
+    }),
 
   // agents + runs
   listAgents: () => call<Agent[]>('s16_list_agents'),

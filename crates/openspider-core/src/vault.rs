@@ -1952,6 +1952,7 @@ pub struct DocPatch {
     pub title: Option<String>,
     pub icon: Option<String>,
     pub parent_id: Option<Option<String>>, // Some(None) = move to root, None = leave unchanged
+    pub position: Option<Option<f64>>,     // Some(None) = clear, Some(Some(x)) = set, None = leave
     pub content_md: Option<String>,
 }
 
@@ -1976,14 +1977,14 @@ impl Vault {
                 _ => false,
             })
             .collect();
-        filtered.sort_by(|a, b| a.title.cmp(&b.title));
+        filtered.sort_by(cmp_position_then_title);
         Ok(filtered)
     }
 
     pub fn list_all_docs(&self) -> Result<Vec<Doc>> {
         let mut docs = self.scan_docs(false)?;
         docs.retain(|d| !d.is_archived);
-        docs.sort_by(|a, b| a.title.cmp(&b.title));
+        docs.sort_by(cmp_position_then_title);
         Ok(docs)
     }
 
@@ -2061,6 +2062,7 @@ impl Vault {
             title: title.to_string(),
             icon,
             parent_id,
+            position: None,
             is_archived: false,
             is_public: false,
             share_id: None,
@@ -2079,6 +2081,7 @@ impl Vault {
         if let Some(t) = patch.title { fm.title = t; }
         if let Some(i) = patch.icon { fm.icon = Some(i); }
         if let Some(pid_opt) = patch.parent_id { fm.parent_id = pid_opt; }
+        if let Some(pos_opt) = patch.position { fm.position = pos_opt; }
         fm.updated_at = chrono::Utc::now().to_rfc3339();
         let body = patch.content_md.unwrap_or(current_body);
         // Rename file if title changed.
@@ -2111,8 +2114,17 @@ impl Vault {
         Ok(read_doc_file(&path, &self.root)?)
     }
 
-    pub fn move_doc(&self, doc_id: &str, new_parent_id: Option<String>) -> Result<Doc> {
-        self.update_doc(doc_id, DocPatch { parent_id: Some(new_parent_id), ..Default::default() })
+    pub fn move_doc(
+        &self,
+        doc_id: &str,
+        new_parent_id: Option<String>,
+        new_position: Option<f64>,
+    ) -> Result<Doc> {
+        self.update_doc(doc_id, DocPatch {
+            parent_id: Some(new_parent_id),
+            position:  Some(new_position),
+            ..Default::default()
+        })
     }
 
     pub fn duplicate_doc(&self, doc_id: &str) -> Result<Doc> {
@@ -2271,6 +2283,8 @@ pub(crate) struct DocFrontmatter {
     pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<f64>,
     #[serde(default)]
     pub is_archived: bool,
     #[serde(default)]
@@ -2279,6 +2293,15 @@ pub(crate) struct DocFrontmatter {
     pub share_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+/// Sibling order: position-asc (None last, ties broken alphabetically).
+/// Centralised so list-docs and tree-build agree on ordering.
+fn cmp_position_then_title(a: &Doc, b: &Doc) -> std::cmp::Ordering {
+    let ap = a.position.unwrap_or(f64::INFINITY);
+    let bp = b.position.unwrap_or(f64::INFINITY);
+    ap.partial_cmp(&bp).unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| a.title.cmp(&b.title))
 }
 
 fn read_doc_file(path: &Path, root: &Path) -> Result<Doc> {
@@ -2295,6 +2318,7 @@ fn read_doc_file(path: &Path, root: &Path) -> Result<Doc> {
         title: fm.title,
         icon: fm.icon,
         parent_id: fm.parent_id,
+        position: fm.position,
         created_at: Some(fm.created_at),
         updated_at: Some(fm.updated_at),
         is_archived: fm.is_archived,

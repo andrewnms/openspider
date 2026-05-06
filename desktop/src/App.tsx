@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { Sidebar } from './components/Sidebar'
 import { TitleBar } from './components/TitleBar'
 import { RightPanel } from './components/RightPanel'
@@ -102,7 +103,50 @@ export default function App() {
       <AIMenu />
       <DialogHost />
       <WorkspacePicker />
+      <ToastHost />
     </div>
+  )
+}
+
+/** Lightweight global toast — listens for `os:toast` CustomEvents and pops
+ *  a 1.2s pill in the bottom-right. Used by the doc-tree menu's Copy actions
+ *  (and any other "did this just work?" feedback we add later). One slot,
+ *  newest wins; if you fire two in quick succession the second replaces. */
+function ToastHost() {
+  const [msg, setMsg] = useState<string | null>(null)
+  useEffect(() => {
+    let timer: number | null = null
+    const onToast = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setMsg(typeof detail === 'string' ? detail : String(detail ?? ''))
+      if (timer) window.clearTimeout(timer)
+      timer = window.setTimeout(() => setMsg(null), 1200)
+    }
+    window.addEventListener('os:toast', onToast)
+    return () => {
+      window.removeEventListener('os:toast', onToast)
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [])
+  return (
+    <AnimatePresence>
+      {msg && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          transition={{ duration: 0.12 }}
+          className="fixed bottom-12 right-6 z-[200] px-3 py-2 text-xs font-medium shadow-lg"
+          style={{
+            background: 'var(--color-text)',
+            color:      'var(--color-bg-strong)',
+            borderRadius: '0.5rem',
+          }}
+        >
+          ✓ {msg}
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

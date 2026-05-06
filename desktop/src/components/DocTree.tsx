@@ -1,19 +1,27 @@
 /**
  * Hierarchical doc tree for the sidebar.
  *
- * Builds the tree client-side from the flat list returned by `k.listAllDocs()`
- * — cheap (typically < 1000 docs) and avoids per-node fetches. Each node
- * supports expand/collapse, click-to-open, hover `+` for new sub-doc,
- * right-click context menu (Rename / New sub-doc / Move to root / Delete),
- * and **drag-and-drop reparenting** — drag a doc onto another to make it a
- * sub-doc; drop on the empty root area to detach to top-level.
+ * Builds the tree client-side from the flat list returned by `k.listAllDocs()`.
+ * Each node supports expand/collapse, click-to-open, hover affordances
+ * (`+` new child, `…` overflow), right-click context menu (SiYuan-style),
+ * and **drag-and-drop with triangulation** — drag onto top 25% / middle 50%
+ * / bottom 25% of a row to reorder above / nest into / reorder below. Drop
+ * on the empty root zone to detach to top-level.
+ *
+ * Sibling order is persisted via the `position` field on each doc. When the
+ * user drags or uses "Create above/below", the entire affected sibling group
+ * is renumbered 0..N-1 in parallel — single source of truth, no fractional
+ * drift. For a sidebar with O(10s) of siblings this is effectively free.
  *
  * Persisted UI state: which parent IDs are expanded. Lives in localStorage
  * under `os.docTree.expanded` so the tree feels like it remembers you.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { ChevronRight, FileText, Plus, MoreHorizontal, Trash2, Edit3, FolderInput } from '../lib/icons'
+import {
+  ChevronRight, FileText, Plus, MoreHorizontal, Trash2, Edit3, FolderInput,
+  Copy, Link2, FileQuestion, ArrowRight,
+} from '../lib/icons'
 import { k, type Doc } from '../lib/mcp'
 import { store } from '../store'
 import { appPrompt, appConfirm } from '../lib/dialog'
@@ -74,11 +82,41 @@ export function DocTree({ activeTabId, refreshTick }: {
     store.open({ title: created.title, icon: created.icon, view: { kind: 'doc', docId: created.id } })
   }
 
+  /** "Create doc above/below" — like createSub but inserts as a *sibling*
+   *  of `target` at the requested side, then renumbers the sibling group so
+   *  the new doc lands exactly above/below visually. */
+  async function createSibling(target: Doc, side: 'above' | 'below') {
+    const title = await appPrompt(`New doc ${side} "${target.title}"?`)
+    if (!title) return
+    const parentId = target.parentId ?? null
+    const created = await k.createDoc(title, {
+      icon: '📄',
+      ...(parentId ? { parentId } : {}),
+    })
+    setDocs((xs) => {
+      const next = [...xs, created]
+      // Build the new ordered list of siblings and stamp positions.
+      const siblings = orderedSiblingsAfterInsert(next, parentId, target.id, created.id, side)
+      reorderInBackground(siblings)
+      return next.map((d) => {
+        const idx = siblings.findIndex((s) => s.id === d.id)
+        return idx >= 0 ? { ...d, position: idx } : d
+      })
+    })
+    store.open({ title: created.title, icon: created.icon, view: { kind: 'doc', docId: created.id } })
+  }
+
   async function rename(doc: Doc) {
     const title = await appPrompt('New title?', doc.title)
     if (!title || title === doc.title) return
     const updated = await k.updateDoc(doc.id, { title })
     setDocs((xs) => xs.map((d) => d.id === doc.id ? { ...d, ...updated } : d))
+  }
+
+  async function duplicate(doc: Doc) {
+    const dup = await k.duplicateDoc(doc.id).catch(() => null)
+    if (!dup) return
+    setDocs((xs) => [...xs, dup])
   }
 
   async function moveToRoot(doc: Doc) {
@@ -93,8 +131,26 @@ export function DocTree({ activeTabId, refreshTick }: {
     setDocs((xs) => xs.filter((d) => d.id !== doc.id && d.parentId !== doc.id))
   }
 
-  /** Move `draggedId` under `targetId` (or to root if `targetId` is null). */
-  async function performMove(targetParentId: string | null) {
+  /** Renumber a sibling group (positions 0..N-1) on the backend, in parallel.
+   *  Fire-and-forget; the local optimistic state already reflects the order. */
+  function reorderInBackground(orderedSiblings: Doc[]) {
+    Promise.all(
+      orderedSiblings.map((d, i) => {
+        if (d.position === i) return null // already correct, skip the call
+        return k.moveDoc(d.id, d.parentId ?? null, i).catch((e) => {
+          console.error('[doctree] reorder failed for', d.title, e)
+        })
+      }),
+    ).then(() => console.log('[doctree] reorder ✓', orderedSiblings.map((d) => d.title)))
+  }
+
+  /** Move `draggedId` under `targetParentId`. If `pos` is given, also place
+   *  the doc at that sibling slot (above/into/below relative to `targetId`). */
+  async function performMove(
+    targetParentId: string | null,
+    pos: 'above' | 'into' | 'below' = 'into',
+    relativeToId?: string,
+  ) {
     const id = draggedIdRef.current
     if (!id) { console.warn('[doctree] performMove: no draggedId'); return }
     if (id === targetParentId) { console.warn('[doctree] performMove: self-target'); return }
@@ -102,20 +158,34 @@ export function DocTree({ activeTabId, refreshTick }: {
       console.warn('[doctree] performMove: would create cycle', { id, targetParentId })
       return
     }
-    console.log('[doctree] performMove', { id, targetParentId })
-    // Optimistic UI — flip the parent locally, then call the server.
-    setDocs((xs) => xs.map((d) => d.id === id ? { ...d, parentId: targetParentId } : d))
+    console.log('[doctree] performMove', { id, targetParentId, pos, relativeToId })
     if (targetParentId) {
       setExpanded((prev) => {
         const next = new Set(prev); next.add(targetParentId); saveExpanded(next); return next
       })
     }
+
+    // Sibling reorder (above/below): renumber the WHOLE group in parallel.
+    if (pos !== 'into' && relativeToId) {
+      setDocs((xs) => {
+        const next = xs.map((d) => d.id === id ? { ...d, parentId: targetParentId } : d)
+        const siblings = orderedSiblingsAfterInsert(next, targetParentId, relativeToId, id, pos)
+        reorderInBackground(siblings)
+        return next.map((d) => {
+          const idx = siblings.findIndex((s) => s.id === d.id)
+          return idx >= 0 ? { ...d, position: idx } : d
+        })
+      })
+      return
+    }
+
+    // Plain "into" move (or move-to-root) — just flip the parent.
+    setDocs((xs) => xs.map((d) => d.id === id ? { ...d, parentId: targetParentId } : d))
     try {
       const updated = await k.moveDoc(id, targetParentId)
       console.log('[doctree] performMove ✓', updated)
     } catch (e) {
       console.error('[doctree] performMove failed', e)
-      // Re-fetch to undo the optimistic change since the server rejected it.
       k.listAllDocs().then(setDocs).catch(() => {})
     }
   }
@@ -169,8 +239,10 @@ export function DocTree({ activeTabId, refreshTick }: {
           drop={drop}
           onToggle={toggle}
           onCreateSub={createSub}
+          onCreateSibling={createSibling}
           onRename={rename}
           onMoveToRoot={moveToRoot}
+          onDuplicate={duplicate}
           onDelete={remove}
           onDragStart={(id) => {
             // Update the ref *synchronously* so onValidateTarget can run on
@@ -217,7 +289,7 @@ export function DocTree({ activeTabId, refreshTick }: {
 
 function NodeRow({
   node, depth, activeTabId, expanded, draggedId, drop,
-  onToggle, onCreateSub, onRename, onMoveToRoot, onDelete,
+  onToggle, onCreateSub, onCreateSibling, onRename, onMoveToRoot, onDuplicate, onDelete,
   onDragStart, onDragEnd, onSetDrop, onValidateTarget, onPerformMove, onResolveDropParent,
 }: {
   node: Node
@@ -228,14 +300,20 @@ function NodeRow({
   drop: DropIndicator
   onToggle:        (id: string) => void
   onCreateSub:     (parent: Doc) => void
+  onCreateSibling: (target: Doc, side: 'above' | 'below') => void
   onRename:        (doc: Doc) => void
   onMoveToRoot:    (doc: Doc) => void
+  onDuplicate:     (doc: Doc) => void
   onDelete:        (doc: Doc) => void
   onDragStart:     (id: string) => void
   onDragEnd:       () => void
   onSetDrop:       (d: DropIndicator) => void
   onValidateTarget:(id: string) => boolean
-  onPerformMove:   (targetParentId: string | null) => Promise<void>
+  onPerformMove:   (
+    targetParentId: string | null,
+    pos?: 'above' | 'into' | 'below',
+    relativeToId?: string,
+  ) => Promise<void>
   onResolveDropParent: (target: Doc, pos: DropPos) => string | null
 }) {
   const [hover, setHover] = useState(false)
@@ -279,11 +357,17 @@ function NodeRow({
       return
     }
     e.dataTransfer.dropEffect = 'move'
-    // Simplified: always nest. Dropping anywhere on a row makes the source
-    // a child. To detach to top-level, the user uses the dedicated
-    // "Drop here for top-level" zone at the bottom of the tree. This kills
-    // the y-position-thirds confusion ("why didn't my doc nest?").
-    onSetDrop({ id: node.id, pos: 'into' })
+    // TRIANGULATION — the row splits into three hit zones based on cursor Y:
+    //   top 30%    → 'above'  (insert as sibling above target)
+    //   middle 40% → 'into'   (nest as child of target)
+    //   bottom 30% → 'below'  (insert as sibling below target)
+    // The middle zone is wider than the edges so "make child" stays the
+    // dominant gesture; the edges are still big enough (≈9px on a 30px row)
+    // to hit comfortably for in-between drops.
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const ratio = (e.clientY - r.top) / r.height
+    const pos: DropPos = ratio < 0.30 ? 'above' : ratio > 0.70 ? 'below' : 'into'
+    onSetDrop({ id: node.id, pos })
   }
   async function onDropRow(e: React.DragEvent) {
     e.preventDefault()
@@ -293,11 +377,16 @@ function NodeRow({
       onSetDrop(null); onDragEnd()
       return
     }
-    console.log('[doctree] drop into', { draggedId, target: node.id })
+    // Compute the drop position from cursor Y at drop time — not from React
+    // state, which may be a tick behind. Reading the geometry every time
+    // sidesteps the well-known dragover→drop-in-the-same-task race.
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const ratio = (e.clientY - r.top) / r.height
+    const pos: DropPos = ratio < 0.30 ? 'above' : ratio > 0.70 ? 'below' : 'into'
+    const targetParent = onResolveDropParent(node, pos)
+    console.log('[doctree] drop', { draggedId, target: node.id, pos, targetParent })
     onSetDrop(null)
-    // Always nest on row drop — sibling reordering is a future feature
-    // (needs a per-doc `position` field; backend doesn't have one yet).
-    await onPerformMove(node.id)
+    await onPerformMove(targetParent, pos, node.id)
     onDragEnd()
   }
 
@@ -402,13 +491,17 @@ function NodeRow({
 
         {menu && (
           <NodeMenu
+            doc={node}
             x={menu.x}
             y={menu.y}
             onClose={() => setMenu(null)}
-            onRename={() => { onRename(node); setMenu(null) }}
-            onCreateSub={() => { onCreateSub(node); setMenu(null) }}
+            onCreateAbove={() => { onCreateSibling(node, 'above'); setMenu(null) }}
+            onCreateBelow={() => { onCreateSibling(node, 'below'); setMenu(null) }}
+            onCreateSub={()   => { onCreateSub(node); setMenu(null) }}
+            onRename={()      => { onRename(node); setMenu(null) }}
+            onDuplicate={()   => { onDuplicate(node); setMenu(null) }}
             onMoveToRoot={node.parentId ? () => { onMoveToRoot(node); setMenu(null) } : undefined}
-            onDelete={() => { onDelete(node); setMenu(null) }}
+            onDelete={()      => { onDelete(node); setMenu(null) }}
           />
         )}
       </div>
@@ -436,8 +529,10 @@ function NodeRow({
                 drop={drop}
                 onToggle={onToggle}
                 onCreateSub={onCreateSub}
+                onCreateSibling={onCreateSibling}
                 onRename={onRename}
                 onMoveToRoot={onMoveToRoot}
+                onDuplicate={onDuplicate}
                 onDelete={onDelete}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
@@ -454,30 +549,68 @@ function NodeRow({
   )
 }
 
+/* ────────── NodeMenu — SiYuan-style row context menu ──────────────────
+   Shown on right-click and on the `…` overflow click. Mirrors SiYuan's
+   layout so muscle memory transfers: Create above/below at the top,
+   structural ops in the middle, destructive ops at the bottom. The Copy
+   submenu opens to the right on hover (lookahead via setTimeout cancels
+   the close if you slide into the submenu without bumping a sibling).
+
+   Closes on outside click / Escape. We bump `pointerEvents=auto` after
+   mount so the click that opened it doesn't immediately close it. */
 function NodeMenu({
-  x, y, onClose, onRename, onCreateSub, onMoveToRoot, onDelete,
+  doc, x, y, onClose,
+  onCreateAbove, onCreateBelow, onCreateSub,
+  onRename, onDuplicate, onMoveToRoot, onDelete,
 }: {
+  doc: Doc
   x: number; y: number; onClose: () => void
-  onRename: () => void; onCreateSub: () => void
-  onMoveToRoot?: () => void; onDelete: () => void
+  onCreateAbove: () => void
+  onCreateBelow: () => void
+  onCreateSub:   () => void
+  onRename:      () => void
+  onDuplicate:   () => void
+  onMoveToRoot?: () => void
+  onDelete:      () => void
 }) {
+  const [copyOpen, setCopyOpen] = useState(false)
+  const copyHoldRef = useRef<number | null>(null)
+
   useEffect(() => {
-    const close = () => onClose()
+    const close = (e: Event) => {
+      // Allow clicks INSIDE the menu (and the submenu) without closing.
+      const t = e.target as HTMLElement | null
+      if (t?.closest('[data-doctree-menu]')) return
+      onClose()
+    }
     document.addEventListener('mousedown', close)
-    document.addEventListener('keydown', close)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('mousedown', close)
-      document.removeEventListener('keydown', close)
+      document.removeEventListener('keydown', onKey)
     }
   }, [onClose])
 
+  // Copy actions write to clipboard and show a brief toast via the global
+  // event bus. We dispatch a CustomEvent that the root layout picks up — the
+  // doc-view toast machinery handles the visual.
+  function copy(label: string, text: string) {
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      window.dispatchEvent(new CustomEvent('os:toast', { detail: `Copied ${label}` }))
+    }).catch((e) => console.error('clipboard write failed', e))
+    onClose()
+  }
+
   return (
     <motion.div
+      data-doctree-menu
       initial={{ opacity: 0, y: -4, scale: 0.97 }}
       animate={{ opacity: 1, y: 0,  scale: 1 }}
       transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
       onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-      className="fixed z-[100] w-48 py-1 shadow-xl"
+      className="fixed z-[100] w-56 py-1 shadow-xl"
       style={{
         left: x, top: y,
         background: 'var(--color-bg-strong)',
@@ -485,33 +618,122 @@ function NodeMenu({
         borderRadius: '0.5rem',
       }}
     >
-      <Row icon={<Edit3 size={13} />}        label="Rename"      onClick={onRename} />
-      <Row icon={<Plus size={13} />}         label="New sub-doc" onClick={onCreateSub} />
+      <Row icon={<Plus size={13} />}    label="Create doc above" onClick={onCreateAbove} />
+      <Row icon={<Plus size={13} />}    label="Create doc below" onClick={onCreateBelow} />
+
+      <Divider />
+
+      {/* Copy — with submenu */}
+      <div
+        data-doctree-menu
+        className="relative"
+        onMouseEnter={() => {
+          if (copyHoldRef.current) clearTimeout(copyHoldRef.current)
+          setCopyOpen(true)
+        }}
+        onMouseLeave={() => {
+          // Small grace period so the user can slide diagonally into the
+          // submenu without it snapping shut.
+          copyHoldRef.current = window.setTimeout(() => setCopyOpen(false), 120)
+        }}
+      >
+        <Row
+          icon={<Copy size={13} />}
+          label="Copy"
+          right={<ChevronRight size={11} />}
+          onClick={() => setCopyOpen((v) => !v)}
+        />
+        {copyOpen && (
+          <div
+            data-doctree-menu
+            className="absolute left-full top-0 ml-1 w-56 py-1 shadow-xl"
+            style={{
+              background: 'var(--color-bg-strong)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '0.5rem',
+            }}
+          >
+            <Row icon={<FileText size={13} />}     label="As Markdown link"
+                 sub={`[${doc.title}](...)`}
+                 onClick={() => copy('Markdown link', `[${doc.title}](openspider://doc/${doc.id})`)} />
+            <Row icon={<Link2 size={13} />}        label="As wiki-link"
+                 sub={`[[${doc.title}]]`}
+                 onClick={() => copy('wiki-link', `[[${doc.title}]]`)} />
+            <Row icon={<FileQuestion size={13} />} label="Doc ID"
+                 sub={doc.id}
+                 onClick={() => copy('doc ID', doc.id)} />
+          </div>
+        )}
+      </div>
+
+      <Row icon={<Copy size={13} />}        label="Duplicate"     onClick={onDuplicate} />
+      <Row icon={<Plus size={13} />}        label="New sub-doc"   onClick={onCreateSub} />
       {onMoveToRoot && (
         <Row icon={<FolderInput size={13} />} label="Move to root" onClick={onMoveToRoot} />
       )}
-      <div className="my-1" style={{ borderTop: '1px solid var(--color-border-soft)' }} />
-      <Row icon={<Trash2 size={13} />}       label="Delete"      onClick={onDelete} danger />
+
+      <Divider />
+
+      <Row icon={<ArrowRight size={13} />}  label="Open in new tab"
+           onClick={() => {
+             store.open({ title: doc.title, icon: doc.icon, view: { kind: 'doc', docId: doc.id } })
+             onClose()
+           }} />
+
+      <Divider />
+
+      <Row icon={<Edit3 size={13} />}       label="Rename"  shortcut="F2"  onClick={onRename} />
+      <Row icon={<Trash2 size={13} />}      label="Delete"  shortcut="⌘⌫" onClick={onDelete} danger />
     </motion.div>
   )
 }
 
+function Divider() {
+  return <div className="my-1" style={{ borderTop: '1px solid var(--color-border-soft)' }} />
+}
+
 function Row({
-  icon, label, onClick, danger,
-}: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  icon, label, sub, right, shortcut, onClick, danger,
+}: {
+  icon: React.ReactNode; label: string
+  sub?: string; right?: React.ReactNode; shortcut?: string
+  onClick: () => void; danger?: boolean
+}) {
   return (
     <button
+      data-doctree-menu
       onClick={onClick}
       className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-[var(--color-border-soft)]"
       style={{ color: danger ? 'var(--color-danger)' : 'var(--color-text)' }}
     >
-      <span style={{ color: danger ? 'var(--color-danger)' : 'var(--color-text-subtle)' }}>{icon}</span>
-      {label}
+      <span style={{ color: danger ? 'var(--color-danger)' : 'var(--color-text-subtle)', flexShrink: 0 }}>{icon}</span>
+      <span className="flex-1 min-w-0 truncate">
+        <span>{label}</span>
+        {sub && (
+          <span className="block text-[10px] mono truncate"
+                style={{ color: 'var(--color-text-subtle)' }}>{sub}</span>
+        )}
+      </span>
+      {shortcut && (
+        <span className="text-[10px] mono shrink-0"
+              style={{ color: 'var(--color-text-subtle)' }}>{shortcut}</span>
+      )}
+      {right && <span className="shrink-0" style={{ color: 'var(--color-text-subtle)' }}>{right}</span>}
     </button>
   )
 }
 
 /* ────────── helpers ────────── */
+
+function cmpDocs(a: Doc, b: Doc): number {
+  // Sibling order = position-asc, undefined-last, ties broken alphabetically.
+  // Mirrors `cmp_position_then_title` in vault.rs so optimistic UI matches
+  // server truth on the next refetch.
+  const ap = a.position ?? Number.POSITIVE_INFINITY
+  const bp = b.position ?? Number.POSITIVE_INFINITY
+  if (ap !== bp) return ap - bp
+  return a.title.localeCompare(b.title)
+}
 
 function buildTree(flat: Doc[]): Node[] {
   const byId = new Map<string, Node>()
@@ -525,11 +747,32 @@ function buildTree(flat: Doc[]): Node[] {
     }
   }
   const sortRec = (xs: Node[]) => {
-    xs.sort((a, b) => a.title.localeCompare(b.title))
+    xs.sort(cmpDocs)
     for (const x of xs) sortRec(x.children)
   }
   sortRec(roots)
   return roots
+}
+
+/** Compute the new ordered sibling list after inserting `insertId` next to
+ *  `relativeToId` on the given side. Used by both drag-drop and "Create
+ *  doc above/below" so the visual order is computed in one place. */
+function orderedSiblingsAfterInsert(
+  allDocs: Doc[],
+  parentId: string | null,
+  relativeToId: string,
+  insertId: string,
+  side: 'above' | 'below',
+): Doc[] {
+  const siblings = allDocs
+    .filter((d) => (d.parentId ?? null) === parentId && d.id !== insertId)
+    .sort(cmpDocs)
+  const inserted = allDocs.find((d) => d.id === insertId)
+  if (!inserted) return siblings
+  const idx = siblings.findIndex((d) => d.id === relativeToId)
+  if (idx < 0) return [...siblings, inserted]
+  const insertAt = side === 'above' ? idx : idx + 1
+  return [...siblings.slice(0, insertAt), inserted, ...siblings.slice(insertAt)]
 }
 
 /** Map node.id → set of all its descendant node ids. Used by drag-drop to

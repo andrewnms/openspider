@@ -120,6 +120,10 @@ pub struct Doc {
     pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
+    /// Sibling-order key. Lower = earlier. None → falls back to alphabetical
+    /// at the end of the ordered set. Set by drag-drop / "Create above/below".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
