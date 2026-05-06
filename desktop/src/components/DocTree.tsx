@@ -268,14 +268,10 @@ function NodeRow({
     onDragStart(node.id)
   }
   function onDragOverRow(e: React.DragEvent) {
-    // CRITICAL: detect our drag via dataTransfer.types, not the React
-    // `draggedId` prop. The prop is async state and may still be null on
-    // the very first dragover after dragstart (React hasn't re-rendered
-    // yet). dataTransfer.types is set synchronously at dragstart, so it's
-    // always up-to-date. Without preventDefault on dragover, the browser
-    // silently refuses the drop — this is the canonical drag-drop bug.
-    const isOurDrag = e.dataTransfer.types.includes(DRAG_MIME)
-    if (!isOurDrag) return
+    // Detect our drag via dataTransfer.types (set synchronously at
+    // dragstart) — not the React `draggedId` prop, which lags. Without
+    // preventDefault on dragover, the browser silently refuses the drop.
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return
     e.preventDefault()
     e.stopPropagation()
     if (!onValidateTarget(node.id)) {
@@ -283,11 +279,11 @@ function NodeRow({
       return
     }
     e.dataTransfer.dropEffect = 'move'
-    // Split the row into thirds: top/bottom 25% → sibling, middle 50% → child.
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const ratio = (e.clientY - r.top) / r.height
-    const pos: DropPos = ratio < 0.25 ? 'above' : ratio > 0.75 ? 'below' : 'into'
-    onSetDrop({ id: node.id, pos })
+    // Simplified: always nest. Dropping anywhere on a row makes the source
+    // a child. To detach to top-level, the user uses the dedicated
+    // "Drop here for top-level" zone at the bottom of the tree. This kills
+    // the y-position-thirds confusion ("why didn't my doc nest?").
+    onSetDrop({ id: node.id, pos: 'into' })
   }
   async function onDropRow(e: React.DragEvent) {
     e.preventDefault()
@@ -297,19 +293,11 @@ function NodeRow({
       onSetDrop(null); onDragEnd()
       return
     }
-    // Compute the drop position FROM THE CURSOR Y at the moment of drop —
-    // not from React state which may be stale because dragover→drop fires in
-    // the same task and the re-render hasn't committed yet. This reads the
-    // actual geometry every time, no race.
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const ratio = (e.clientY - r.top) / r.height
-    const pos: DropPos = ratio < 0.25 ? 'above' : ratio > 0.75 ? 'below' : 'into'
-    const targetParent = onResolveDropParent(node, pos)
-    console.log('[doctree] drop', {
-      draggedId, target: node.id, pos, targetParent,
-    })
+    console.log('[doctree] drop into', { draggedId, target: node.id })
     onSetDrop(null)
-    await onPerformMove(targetParent)
+    // Always nest on row drop — sibling reordering is a future feature
+    // (needs a per-doc `position` field; backend doesn't have one yet).
+    await onPerformMove(node.id)
     onDragEnd()
   }
 
