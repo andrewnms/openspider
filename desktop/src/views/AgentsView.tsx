@@ -4,7 +4,8 @@ import { Plus, Play, Cpu, Sparkles, ChevronRight } from '../lib/icons'
 import { k, type Agent, type Run, type Trigger } from '../lib/mcp'
 import { store } from '../store'
 import { appPrompt, appAlert } from '../lib/dialog'
-import { isAIConfigured, streamChat } from '../lib/ai'
+import { isAIConfigured } from '../lib/ai'
+import { AgentPlannerChatHost } from '../components/AgentPlannerChat'
 
 export function AgentsListView() {
   const [agents, setAgents] = useState<Agent[]>([])
@@ -121,7 +122,7 @@ export function AgentView({ agentId }: { agentId: string }) {
   const [recentRuns, setRecentRuns]     = useState<Run[]>([])
   const [triggers]                      = useState<Trigger[]>([])
   const [running,  setRunning]          = useState(false)
-  const [planning, setPlanning]         = useState(false)
+  const [plannerOpen, setPlannerOpen]   = useState(false)
   const [refresh,  setRefresh]          = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
@@ -143,45 +144,15 @@ export function AgentView({ agentId }: { agentId: string }) {
     finally { setRunning(false) }
   }
 
-  /** Ask the configured LLM to plan the agent: pick a mode and produce the
-   *  matching system prompt / compiled script based on the description.
-   *  We extract a JSON block from the response so the UI can apply it
-   *  without parsing prose. */
-  async function planWithAI() {
-    if (!agent) return
+  /** Open the chat planner. The chat handles its own AI calls, mention
+   *  picker, and apply-plan affordance — when it commits a plan, it calls
+   *  back through onApplied with the patched agent + chosen mode. */
+  function openPlanner() {
     if (!isAIConfigured()) {
-      await appAlert('Configure your AI endpoint + model in Settings → AI first.')
+      appAlert('Configure your AI endpoint + model in Settings → AI first.')
       return
     }
-    if (!agent.description?.trim()) {
-      await appAlert('Add a one-line description first — that\'s what the planner reads.')
-      return
-    }
-    setPlanning(true)
-    let acc = ''
-    try {
-      acc = await streamChat([
-        { role: 'system', content: PLANNER_SYSTEM },
-        { role: 'user',   content: `Agent name: ${agent.name}\nDescription: ${agent.description}\n\nPlan it.` },
-      ], () => {})
-      const plan = extractPlan(acc)
-      if (!plan) throw new Error('Planner returned no JSON block.')
-      const patch: Partial<Agent> = {}
-      if (plan.systemPrompt   !== undefined) patch.systemPrompt   = plan.systemPrompt
-      if (plan.compiledScript !== undefined) patch.compiledScript = plan.compiledScript
-      if (plan.model)                        patch.model          = plan.model
-      const updated = await k.updateAgent(agent.id, patch)
-      setAgent(updated)
-      setMode(plan.mode ?? inferMode(updated))
-      setSystemPrompt(updated.systemPrompt ?? '')
-      setScript(updated.compiledScript ?? '')
-      window.dispatchEvent(new CustomEvent('os:toast', { detail: `Planned as ${plan.mode}` }))
-    } catch (e) {
-      console.error('plan failed', e, acc)
-      await appAlert(`Planner failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setPlanning(false)
-    }
+    setPlannerOpen(true)
   }
 
   /** Switch mode without losing what the user already wrote — empty fields
@@ -217,16 +188,15 @@ export function AgentView({ agentId }: { agentId: string }) {
             <motion.button
               whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
               transition={{ duration: 0.08 }}
-              onClick={planWithAI}
-              disabled={planning}
-              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-md font-medium disabled:opacity-50"
+              onClick={openPlanner}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-md font-medium"
               style={{
                 background: 'var(--color-bg-soft)',
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-text)',
               }}
             >
-              <Sparkles size={14} /> {planning ? 'Planning…' : 'Plan with AI'}
+              <Sparkles size={14} /> Plan with AI
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
@@ -404,6 +374,19 @@ export function AgentView({ agentId }: { agentId: string }) {
 
         {triggers.length > 0 && <pre className="text-[10px] mt-4">{JSON.stringify(triggers, null, 2)}</pre>}
       </aside>
+
+      <AgentPlannerChatHost
+        open={plannerOpen}
+        agent={agent}
+        onClose={() => setPlannerOpen(false)}
+        onApplied={(updated, nextMode) => {
+          setAgent(updated)
+          setMode(nextMode)
+          setSystemPrompt(updated.systemPrompt   ?? '')
+          setScript(updated.compiledScript ?? '')
+          window.dispatchEvent(new CustomEvent('os:toast', { detail: `Planned as ${nextMode}` }))
+        }}
+      />
     </div>
   )
 }
@@ -443,57 +426,3 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ────────── AI planner ───────────────────────────────────────────────
-   Runs once when the user hits "Plan with AI." The system prompt forces
-   the model into a structured response so we can parse + apply without
-   showing the user a pile of prose. */
-
-const PLANNER_SYSTEM = `You design agents for a personal Brain app.
-
-Given an agent's name + a one-line description, decide which of three
-modes is cheapest+most-correct:
-
-  - "prompt"  : just a system prompt + an LLM. Use for chat-shaped tasks
-                (summarise / classify / draft / extract).
-  - "script"  : pure JavaScript, no LLM. Use for deterministic ops where
-                LLM reasoning isn't needed (cron ETLs, data shuffling,
-                file ops, fixed transforms).
-  - "hybrid"  : a JS script that ALSO calls s16.ai() for the parts that
-                need reasoning. Use only when both are clearly needed.
-
-Default to "prompt" unless the task obviously needs JS branching, file IO,
-or cron-style state. Do NOT pick "hybrid" if "prompt" alone would work.
-
-Respond with a JSON block (and nothing else outside it):
-
-\`\`\`json
-{
-  "mode": "prompt" | "script" | "hybrid",
-  "model": "x-ai/grok-4-fast",        // suggest a sensible model
-  "systemPrompt": "...",              // required for prompt + hybrid
-  "compiledScript": "..."             // required for script + hybrid
-}
-\`\`\`
-
-The compiled script body has access to a global \`s16\` (s16.log, s16.ai,
-s16.docs.*, s16.http, etc.) and a \`context\` object. Return any JSON-
-serialisable value.`
-
-function extractPlan(raw: string): {
-  mode?: Mode; model?: string;
-  systemPrompt?: string; compiledScript?: string;
-} | null {
-  const m = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const body = m ? m[1] : raw
-  try {
-    const obj = JSON.parse(body)
-    return obj
-  } catch {
-    // Some models forget the fences. Try to find the first { ... } block.
-    const i = raw.indexOf('{'), j = raw.lastIndexOf('}')
-    if (i >= 0 && j > i) {
-      try { return JSON.parse(raw.slice(i, j + 1)) } catch { return null }
-    }
-    return null
-  }
-}
