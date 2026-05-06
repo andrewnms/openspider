@@ -25,7 +25,7 @@ export type RecentDoc = { id: string; title: string; icon?: string; openedAt: nu
 export type Theme = 'light' | 'dark'
 
 export type SidebarSection = 'docs' | 'databases' | 'sites'
-export type RightSection   = 'outline' | 'backlinks'
+export type RightSection   = 'outline' | 'backlinks' | 'agents' | 'skills'
 
 type State = {
   tabs:        Tab[]

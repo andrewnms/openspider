@@ -15,10 +15,11 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { ListTree, Link2, Network, Cpu, Sparkles } from '../lib/icons'
+import { ListTree, Link2, Network, Cpu, Sparkles, Plus } from '../lib/icons'
 import { store, useStore } from '../store'
 import { useActiveEditor, useEditorTick } from '../lib/editorBus'
-import { k } from '../lib/mcp'
+import { k, type Agent, type Skill } from '../lib/mcp'
+import { appPrompt } from '../lib/dialog'
 
 const RAIL_WIDTH  = 44
 const PANEL_WIDTH = 280
@@ -70,16 +71,12 @@ export function RightPanel() {
           style={{ borderRight: rightSec === null ? 'none' : '1px solid var(--color-border)' }}
         >
           <div className="h-full flex flex-col" style={{ width: PANEL_WIDTH }}>
-            <header className="h-9 px-3 flex items-center shrink-0"
-                    style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <span className="text-[11px] uppercase tracking-wider font-semibold"
-                    style={{ color: 'var(--color-text-subtle)' }}>
-                {rightSec === 'outline' ? 'Outline' : rightSec === 'backlinks' ? 'Backlinks' : ''}
-              </span>
-            </header>
+            <PanelHeader section={rightSec} />
             <div className="flex-1 overflow-y-auto">
               {rightSec === 'outline'   && <OutlineBody />}
               {rightSec === 'backlinks' && <BacklinksBody activeDocId={activeDocId} />}
+              {rightSec === 'agents'    && <AgentsDrawerBody />}
+              {rightSec === 'skills'    && <SkillsDrawerBody />}
             </div>
           </div>
         </motion.div>
@@ -92,20 +89,33 @@ export function RightPanel() {
 }
 
 function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: string | null }) {
-  // Doc-context buttons toggle a panel section. Tab-launchers (Graph,
-  // Agents, Skills) open a workspace-level tab in the main pane — they
-  // don't have a side panel of their own. The visual state mirrors that:
-  // panel-section buttons highlight while their panel is open; tab-launcher
-  // buttons highlight while their tab is the active one.
-  const graphActive  = activeTab === '{"kind":"graph"}'
-  const agentsActive = activeTab === '{"kind":"agents"}'
-  const skillsActive = activeTab === '{"kind":"skills"}'
+  // All four upper buttons toggle a drawer panel — Agents/Skills sit at
+  // the top because they're the most-used "switch context" rails; Outline
+  // and Backlinks below them are doc-scoped. Graph stays at the bottom
+  // because it's the only one that opens a workspace tab (no panel body).
+  const graphActive = activeTab === '{"kind":"graph"}'
   return (
     <nav
       className="shrink-0 h-full flex flex-col items-center py-2"
       style={{ width: RAIL_WIDTH }}
     >
-      {/* Doc-context */}
+      <RailBtn
+        icon={<Cpu size={16} />}
+        label="Agents"
+        active={rightSec === 'agents'}
+        onClick={() => store.setRightSection('agents')}
+      />
+      <RailBtn
+        icon={<Sparkles size={16} />}
+        label="Skills"
+        active={rightSec === 'skills'}
+        onClick={() => store.setRightSection('skills')}
+      />
+
+      {/* Visual divider — separates "what's in this workspace" (above)
+         from "what's in this doc" (below). Subtle but the eye picks it up. */}
+      <div className="my-1.5 w-5 h-px" style={{ background: 'var(--color-border)' }} />
+
       <RailBtn
         icon={<ListTree size={16} />}
         label="Outline"
@@ -121,19 +131,6 @@ function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: str
 
       <div className="flex-1" />
 
-      {/* Workspace-level tab launchers */}
-      <RailBtn
-        icon={<Cpu size={16} />}
-        label="Agents"
-        active={agentsActive}
-        onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
-      />
-      <RailBtn
-        icon={<Sparkles size={16} />}
-        label="Skills"
-        active={skillsActive}
-        onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
-      />
       <RailBtn
         icon={<Network size={16} />}
         label="Graph"
@@ -142,6 +139,60 @@ function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: str
       />
     </nav>
   )
+}
+
+/* ────────── Panel header ─────────────────────────────────────────────
+   Each drawer gets a slim 36px header with a label and (for Agents/Skills)
+   a "+" affordance that scaffolds a new item without leaving the rail. */
+function PanelHeader({ section }: { section: 'outline' | 'backlinks' | 'agents' | 'skills' | null }) {
+  const labels: Record<string, string> = {
+    outline:   'Outline',
+    backlinks: 'Backlinks',
+    agents:    'Agents',
+    skills:    'Skills',
+  }
+  const label = section ? labels[section] : ''
+  const showCreate = section === 'agents' || section === 'skills'
+  return (
+    <header className="h-9 px-3 flex items-center shrink-0 gap-2"
+            style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <span className="text-[11px] uppercase tracking-wider font-semibold flex-1"
+            style={{ color: 'var(--color-text-subtle)' }}>
+        {label}
+      </span>
+      {showCreate && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ duration: 0.08 }}
+          onClick={() => section === 'agents' ? createAgent() : createSkill()}
+          title={section === 'agents' ? 'New agent' : 'New skill'}
+          className="w-5 h-5 grid place-items-center rounded hover:bg-[var(--color-border-soft)]"
+          style={{ color: 'var(--color-text-subtle)' }}
+        >
+          <Plus size={12} />
+        </motion.button>
+      )}
+    </header>
+  )
+}
+
+async function createAgent() {
+  const name = await appPrompt('Agent name?'); if (!name) return
+  const created = await k.createAgent({
+    name,
+    model: 'x-ai/grok-4-fast',
+    compiledScript: 's16.log("hello!"); return { ok: true };',
+  })
+  store.open({ title: created.name, icon: '🤖', view: { kind: 'agent', agentId: created.id } })
+}
+async function createSkill() {
+  const name = await appPrompt('Skill name (kebab-case)?'); if (!name) return
+  const created = await k.createSkill({
+    name, displayName: name, description: '',
+    skillMd: `# ${name}\n\nWrite the skill here.\n`,
+  })
+  store.open({ title: created.displayName ?? created.name, icon: '✨', view: { kind: 'skill', skillId: created.id } })
 }
 
 function RailBtn({
@@ -286,6 +337,139 @@ function BacklinksBody({ activeDocId }: { activeDocId: string | null }) {
           )}
         </motion.button>
       ))}
+    </div>
+  )
+}
+
+/* ────────── Agents drawer body ──────────────────────────────────────
+   Compact list view — one tap on a row opens the agent's detail tab.
+   Optimistic refresh on focus so users who create from the "+" header
+   button see the newcomer immediately. */
+function AgentsDrawerBody() {
+  const [agents, setAgents] = useState<Agent[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const load = () => k.listAgents()
+      .then((xs) => { if (!cancelled) setAgents(xs) })
+      .catch(() => { if (!cancelled) setAgents([]) })
+    load()
+    // Poll lightly when the drawer is open — covers the "+" creation case
+    // and any external creates from bettersync without forcing a full sub.
+    const t = window.setInterval(load, 4000)
+    return () => { cancelled = true; window.clearInterval(t) }
+  }, [])
+
+  if (agents === null) return <Empty msg="Loading agents…" />
+  if (agents.length === 0) return (
+    <Empty msg="No agents yet. Tap + above to scaffold one." />
+  )
+
+  return (
+    <div className="px-1 py-2">
+      {agents.map((a) => (
+        <motion.button
+          key={a.id}
+          onClick={() => store.open({ title: a.name, icon: '🤖', view: { kind: 'agent', agentId: a.id } })}
+          whileHover={{ x: 2 }}
+          transition={{ duration: 0.08 }}
+          className="w-full text-left px-3 py-2 rounded hover:bg-[var(--color-border-soft)]"
+        >
+          <div className="flex items-center gap-2">
+            <span style={{ width: 16, textAlign: 'center' }}>🤖</span>
+            <span className="text-sm font-medium truncate flex-1" style={{ color: 'var(--color-text)' }}>
+              {a.name}
+            </span>
+          </div>
+          {a.description ? (
+            <div className="text-[11px] mt-0.5 line-clamp-2 leading-snug pl-6"
+                 style={{ color: 'var(--color-text-muted)' }}>
+              {a.description}
+            </div>
+          ) : a.model && (
+            <div className="text-[10px] mt-0.5 mono pl-6"
+                 style={{ color: 'var(--color-text-subtle)' }}>
+              {a.model}
+            </div>
+          )}
+        </motion.button>
+      ))}
+    </div>
+  )
+}
+
+/* ────────── Skills drawer body ────────── */
+function SkillsDrawerBody() {
+  const [own, setOwn]             = useState<Skill[] | null>(null)
+  const [installed, setInstalled] = useState<Skill[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = () => k.listSkills()
+      .then((r) => { if (!cancelled) { setOwn(r.own); setInstalled(r.installed) } })
+      .catch(() => { if (!cancelled) { setOwn([]); setInstalled([]) } })
+    load()
+    const t = window.setInterval(load, 4000)
+    return () => { cancelled = true; window.clearInterval(t) }
+  }, [])
+
+  if (own === null) return <Empty msg="Loading skills…" />
+  if (own.length === 0 && installed.length === 0) return (
+    <Empty msg="No skills yet. Tap + above to write one." />
+  )
+
+  return (
+    <div className="px-1 py-2">
+      {own.length > 0 && (
+        <>
+          <SubHeader>Own</SubHeader>
+          {own.map((s) => <SkillRow key={s.id} skill={s} />)}
+        </>
+      )}
+      {installed.length > 0 && (
+        <>
+          <SubHeader className="mt-3">Installed</SubHeader>
+          {installed.map((s) => <SkillRow key={s.id} skill={s} />)}
+        </>
+      )}
+    </div>
+  )
+}
+
+function SkillRow({ skill }: { skill: Skill }) {
+  return (
+    <motion.button
+      onClick={() => store.open({
+        title: skill.displayName ?? skill.name,
+        icon: '✨',
+        view: { kind: 'skill', skillId: skill.id },
+      })}
+      whileHover={{ x: 2 }}
+      transition={{ duration: 0.08 }}
+      className="w-full text-left px-3 py-2 rounded hover:bg-[var(--color-border-soft)]"
+    >
+      <div className="flex items-center gap-2">
+        <span style={{ width: 16, textAlign: 'center' }}>✨</span>
+        <span className="text-sm font-medium truncate flex-1" style={{ color: 'var(--color-text)' }}>
+          {skill.displayName ?? skill.name}
+        </span>
+      </div>
+      {skill.description && (
+        <div className="text-[11px] mt-0.5 line-clamp-2 leading-snug pl-6"
+             style={{ color: 'var(--color-text-muted)' }}>
+          {skill.description}
+        </div>
+      )}
+    </motion.button>
+  )
+}
+
+function SubHeader({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider font-semibold ${className ?? ''}`}
+      style={{ color: 'var(--color-text-subtle)' }}
+    >
+      {children}
     </div>
   )
 }
