@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
-  MoreHorizontal, Plus, Trash2, Copy, FileText, Link2,
+  Plus, Trash2, Copy, FileText, Link2,
   FileQuestion, Bookmark, Edit3, ChevronRight,
 } from '../lib/icons'
 import { useActiveEditor } from '../lib/editorBus'
@@ -41,46 +41,16 @@ type Pos = { x: number; y: number }
 export function BlockMenuOverlay() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = useActiveEditor() as any
-  const [hoverId, setHoverId] = useState<string | null>(null)
-  const [hoverGeom, setHoverGeom] = useState<{ left: number; top: number; height: number } | null>(null)
   const [menu, setMenu] = useState<{ blockId: string; pos: Pos } | null>(null)
   const [submenu, setSubmenu] = useState<'turn' | 'copy' | null>(null)
   const submenuTimer = useRef<number | null>(null)
 
-  // Track hovered block via mouseover bubbling. We DON'T mount per-block
-  // listeners — way too many for a long doc. Capture-phase delegation on
-  // the document handles every case.
-  useEffect(() => {
-    if (!editor) { setHoverId(null); return }
-    function onMove(e: MouseEvent) {
-      const t = e.target as HTMLElement | null
-      if (!t) return
-      const blockEl = t.closest('[data-id]') as HTMLElement | null
-      if (!blockEl) { setHoverId(null); setHoverGeom(null); return }
-      const id = blockEl.getAttribute('data-id')
-      if (!id) return
-      const r = blockEl.getBoundingClientRect()
-      // Anchor handle slightly outside the block's left edge.
-      setHoverId(id)
-      setHoverGeom({ left: r.left - 28, top: r.top + 4, height: r.height })
-    }
-    function onLeave(e: MouseEvent) {
-      // Only clear if cursor leaves the editor host entirely (allow moving
-      // to the floating handle / menu without flicker).
-      const t = e.relatedTarget as HTMLElement | null
-      if (!t || !t.closest('.bn-host, [data-block-overlay]')) {
-        setHoverId(null); setHoverGeom(null)
-      }
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseout', onLeave)
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseout', onLeave)
-    }
-  }, [editor])
-
   // Right-click on a block → open menu at cursor (SiYuan parity).
+  // Note: we deliberately DO NOT mount a hover-handle here. BlockNote's
+  // own SideMenu already paints a drag handle + plus button on hover;
+  // stacking another `…` button on top of it (and over the placeholder
+  // text in empty blocks) looked like a visual bug. Right-click + the
+  // built-in side menu cover the same interaction surface without overlap.
   useEffect(() => {
     if (!editor) return
     function onContext(e: MouseEvent) {
@@ -175,40 +145,7 @@ export function BlockMenuOverlay() {
 
   return (
     <>
-      {/* Floating handle on hover */}
-      <AnimatePresence>
-        {hoverId && hoverGeom && (
-          <motion.button
-            data-block-overlay
-            key="handle"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: 0.10 }}
-            onClick={(e) => {
-              e.stopPropagation()
-              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-              setMenu({ blockId: hoverId, pos: { x: r.right + 4, y: r.bottom + 4 } })
-              setSubmenu(null)
-            }}
-            title="Block menu"
-            className="fixed grid place-items-center"
-            style={{
-              left: hoverGeom.left,
-              top: hoverGeom.top,
-              width: 22, height: 22,
-              borderRadius: 4,
-              background: 'transparent',
-              color: 'var(--color-text-subtle)',
-              zIndex: 40,
-            }}
-          >
-            <MoreHorizontal size={14} />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Menu */}
+      {/* Menu (right-click only — no hover handle, see comment above). */}
       <AnimatePresence>
         {menu && (
           <BlockMenu
