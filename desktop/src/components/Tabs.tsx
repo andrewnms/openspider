@@ -1,15 +1,17 @@
-import { X } from 'lucide-react'
+import { X } from '../lib/icons'
 import { store, useStore } from '../store'
 
 export function Tabs() {
   const tabs = useStore((s) => s.tabs)
   const activeTabId = useStore((s) => s.activeTabId)
 
-  if (tabs.length === 0) return <div className="h-10 drag-region" />
+  // No tabs open → don't render anything. The TitleBar already covers the
+  // drag region for the window; an empty 40px strip here was dead space.
+  if (tabs.length === 0) return null
 
   return (
     <div
-      className="h-10 flex items-stretch drag-region overflow-x-auto"
+      className="h-9 flex items-stretch drag-region overflow-x-auto shrink-0"
       style={{ background: 'var(--color-bg-soft)', borderBottom: '1px solid var(--color-border)' }}
     >
       {tabs.map((t) => {

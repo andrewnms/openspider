@@ -1,168 +1,241 @@
+/**
+ * Left sidebar — VSCode/SiYuan-style activity rail + expandable panel.
+ *
+ *   ┌──┬─────────────────────┐
+ *   │📄│  Docs                │   rail = always visible (44px)
+ *   │🗂│  ───────             │   panel = collapsible (256px / 0)
+ *   │🤖│  • Banana            │
+ *   │🌐│  • README            │
+ *   │  │  • New doc           │
+ *   │⚡│                       │
+ *   │⚙ │                       │
+ *   │⊟│                       │   bottom icons = runs / settings / hide
+ *   └──┴─────────────────────┘
+ *
+ * Click an icon → switches the panel to that section AND opens the panel.
+ * Click the *active* icon → collapses the panel (rail stays visible).
+ */
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import {
-  Database as DBIcon, FileText, Cpu, Sparkles, Globe, Activity, Settings,
-  ChevronRight, Plus, Search, Folder,
-} from 'lucide-react'
-import { k, type Database, type Doc, type Agent, type Skill } from '../lib/mcp'
-import { store, useStore } from '../store'
+  Database as DBIcon, FileText, Cpu, Globe, Activity, Settings,
+  ChevronRight, Plus, PanelLeftClose, PanelLeftOpen, Sparkles,
+} from '../lib/icons'
+import { k, type Database, type Agent, type Skill } from '../lib/mcp'
+import { store, useStore, type SidebarSection } from '../store'
+import { appPrompt } from '../lib/dialog'
+import { DocTree } from './DocTree'
+
+const RAIL_WIDTH  = 44
+const PANEL_WIDTH = 256
 
 export function Sidebar() {
   const activeTabId = useStore((s) => s.activeTabId)
+  const collapsed   = useStore((s) => s.sidebarCollapsed)
+  const section     = useStore((s) => s.sidebarSection)
+  const dockVisible = useStore((s) => s.dockVisible)
+
+  // Total dock width = rail (when dock is on) + panel (when section is open).
+  // Animating ONE outer width gives us a smooth slide-out that pulls both the
+  // rail and the panel together, while the panel-collapse remains its own
+  // sub-animation when only the section toggles.
+  const dockWidth = !dockVisible
+    ? 0
+    : RAIL_WIDTH + (collapsed ? 0 : PANEL_WIDTH)
 
   return (
-    <aside
-      className="w-64 shrink-0 h-full flex flex-col"
-      style={{ background: 'var(--color-bg-soft)', borderRight: '1px solid var(--color-border)' }}
-    >
-      {/* Drag region for the title bar */}
-      <div className="h-10 drag-region flex items-center justify-end px-3 gap-2">
-        <button
-          onClick={() => store.setSearchOpen(true)}
-          className="no-drag flex items-center gap-2 text-xs px-2 py-1 rounded-md hover:bg-[var(--color-border-soft)]"
-          style={{ color: 'var(--color-text-muted)' }}
-          title="Search (⌘K)"
-        >
-          <Search size={14} />
-          <span className="hidden lg:inline">Search</span>
-        </button>
-      </div>
-
-      <div className="px-3 pt-1 pb-4 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-md grid place-items-center text-white"
-             style={{ background: '#000' }}>
-          <span style={{ fontSize: 16, lineHeight: 1 }}>🕷</span>
-        </div>
-        <div className="flex-1">
-          <div className="font-semibold text-sm">OpenSpider</div>
-          <div className="text-[10px]" style={{ color: 'var(--color-text-subtle)' }}>v1.0 · local vault</div>
-        </div>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-3 text-sm">
-        <Section title="Databases" icon={<DBIcon size={13} />}>
-          <DatabasesList activeTabId={activeTabId} />
-        </Section>
-        <Section title="Docs" icon={<FileText size={13} />}>
-          <DocsList activeTabId={activeTabId} />
-        </Section>
-        <Section title="AI" icon={<Cpu size={13} />}>
-          <AISection activeTabId={activeTabId} />
-        </Section>
-        <Section title="Sites" icon={<Globe size={13} />}>
-          <SitesList activeTabId={activeTabId} />
-        </Section>
-
-        <div className="pt-2" style={{ borderTop: '1px solid var(--color-border-soft)' }}>
-          <SidebarRow
-            icon={<Activity size={14} />}
-            label="Recent runs"
-            active={activeTabId === '{"kind":"runs"}'}
-            onClick={() => store.open({ title: 'Recent runs', icon: '🏃', view: { kind: 'runs' } })}
-          />
-          <SidebarRow
-            icon={<Settings size={14} />}
-            label="Settings"
-            active={activeTabId === '{"kind":"settings"}'}
-            onClick={() => store.open({ title: 'Settings', icon: '⚙️', view: { kind: 'settings' } })}
-          />
-        </div>
-      </nav>
-    </aside>
-  )
-}
-
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2 py-1 w-full text-left text-[11px] font-semibold uppercase tracking-wider"
-        style={{ color: 'var(--color-text-subtle)' }}
-      >
-        <ChevronRight size={11} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
-        {icon}
-        <span>{title}</span>
-      </button>
-      {open && <div className="ml-1 mt-0.5">{children}</div>}
-    </div>
-  )
-}
-
-function SidebarRow({
-  icon, label, active, onClick, indent = 0,
-}: { icon?: React.ReactNode; label: React.ReactNode; active?: boolean; onClick?: () => void; indent?: number }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 px-2 py-1 w-full text-left rounded-md hover:bg-[var(--color-border-soft)]"
+    <motion.div
+      initial={false}
+      animate={{ width: dockWidth }}
+      transition={{ type: 'spring', stiffness: 320, damping: 32, mass: 0.9 }}
+      className="shrink-0 h-full overflow-hidden"
       style={{
-        paddingLeft: 8 + indent * 12,
-        background: active ? 'var(--color-accent-soft)' : 'transparent',
-        color: active ? 'var(--color-accent)' : 'var(--color-text)',
-        fontWeight: active ? 500 : 400,
+        background: 'var(--color-bg-soft)',
+        borderRight: dockVisible ? '1px solid var(--color-border)' : 'none',
       }}
     >
-      <span className="shrink-0" style={{ color: active ? 'var(--color-accent)' : 'var(--color-text-subtle)' }}>{icon}</span>
-      <span className="flex-1 truncate text-sm">{label}</span>
-    </button>
+      <div
+        className="flex h-full"
+        // Hold the inner rail+panel at their full width so the container clip
+        // animates around them — no reflow / re-layout while shrinking.
+        style={{ width: RAIL_WIDTH + PANEL_WIDTH }}
+      >
+        <Rail collapsed={collapsed} section={section} />
+
+        <motion.div
+          initial={false}
+          animate={{ width: collapsed ? 0 : PANEL_WIDTH, opacity: collapsed ? 0 : 1 }}
+          transition={{
+            width:   { type: 'spring', stiffness: 360, damping: 34 },
+            opacity: { duration: 0.12 },
+          }}
+          className="overflow-hidden h-full"
+          style={{ borderLeft: '1px solid var(--color-border)' }}
+        >
+          <div className="h-full flex flex-col" style={{ width: PANEL_WIDTH }}>
+            <PanelHeader section={section} />
+            <div className="flex-1 overflow-y-auto px-2 pb-3 text-sm">
+              {section === 'docs'      && <DocTree activeTabId={activeTabId} refreshTick={0} />}
+              {section === 'databases' && <DatabasesList activeTabId={activeTabId} />}
+              {section === 'ai'        && <AISection activeTabId={activeTabId} />}
+              {section === 'sites'     && <SitesList />}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
   )
 }
+
+/* ────────── Rail ────────── */
+
+function Rail({ collapsed, section }: { collapsed: boolean; section: SidebarSection }) {
+  const activeTabId = useStore((s) => s.activeTabId)
+  return (
+    <nav
+      className="shrink-0 h-full flex flex-col items-center py-2"
+      style={{ width: RAIL_WIDTH }}
+    >
+      {/* Brand pip */}
+      <div className="w-7 h-7 rounded-md grid place-items-center text-white mb-3"
+           style={{ background: 'var(--color-text)' }}>
+        <span style={{ fontSize: 14, lineHeight: 1 }}>🕷</span>
+      </div>
+
+      {/* Top icons — sections */}
+      <RailBtn
+        icon={<FileText size={16} />}
+        label="Docs"
+        active={!collapsed && section === 'docs'}
+        onClick={() => store.setSidebarSection('docs')}
+      />
+      <RailBtn
+        icon={<DBIcon size={16} />}
+        label="Databases"
+        active={!collapsed && section === 'databases'}
+        onClick={() => store.setSidebarSection('databases')}
+      />
+      <RailBtn
+        icon={<Cpu size={16} />}
+        label="AI"
+        active={!collapsed && section === 'ai'}
+        onClick={() => store.setSidebarSection('ai')}
+      />
+      <RailBtn
+        icon={<Globe size={16} />}
+        label="Sites"
+        active={!collapsed && section === 'sites'}
+        onClick={() => store.setSidebarSection('sites')}
+      />
+
+      <div className="flex-1" />
+
+      {/* Bottom icons — global tabs */}
+      <RailBtn
+        icon={<Activity size={16} />}
+        label="Recent runs"
+        active={activeTabId === '{"kind":"runs"}'}
+        onClick={() => store.open({ title: 'Recent runs', icon: '🏃', view: { kind: 'runs' } })}
+      />
+      <RailBtn
+        icon={<Settings size={16} />}
+        label="Settings"
+        active={activeTabId === '{"kind":"settings"}'}
+        onClick={() => store.open({ title: 'Settings', icon: '⚙️', view: { kind: 'settings' } })}
+      />
+      <RailBtn
+        icon={collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        label={collapsed ? 'Show dock (⌘\\)' : 'Hide dock (⌘\\)'}
+        onClick={() => store.toggleSidebar()}
+      />
+    </nav>
+  )
+}
+
+function RailBtn({
+  icon, label, active, onClick,
+}: { icon: React.ReactNode; label: string; active?: boolean; onClick: () => void }) {
+  return (
+    <motion.button
+      title={label}
+      onClick={onClick}
+      whileHover={{ scale: 1.06 }}
+      whileTap={{ scale: 0.92 }}
+      transition={{ duration: 0.08 }}
+      className="w-8 h-8 grid place-items-center rounded my-0.5 relative"
+      style={{
+        background: active ? 'var(--color-accent)' : 'transparent',
+        color:      active ? '#fff' : 'var(--color-text-muted)',
+      }}
+    >
+      {icon}
+    </motion.button>
+  )
+}
+
+/* ────────── Panel header (label + new-item action) ────────── */
+
+function PanelHeader({ section }: { section: SidebarSection }) {
+  const title =
+    section === 'docs'      ? 'Doc Tree' :
+    section === 'databases' ? 'Databases' :
+    section === 'ai'        ? 'AI' :
+    'Sites'
+  const Icon =
+    section === 'docs'      ? FileText :
+    section === 'databases' ? DBIcon :
+    section === 'ai'        ? Cpu :
+    Globe
+  return (
+    <header
+      className="px-3 flex items-center gap-2 shrink-0"
+      style={{ height: 44, borderBottom: '1px solid var(--color-border)' }}
+    >
+      <Icon size={14} style={{ color: 'var(--color-text-subtle)' }} />
+      <span
+        className="text-[14px] font-semibold tracking-tight"
+        style={{ color: 'var(--color-text)' }}
+      >
+        {title}
+      </span>
+    </header>
+  )
+}
+
+/* ────────── Panel sections ────────── */
 
 function DatabasesList({ activeTabId }: { activeTabId: string | null }) {
   const [dbs, setDbs] = useState<Database[]>([])
   useEffect(() => { k.listDatabases().then(setDbs).catch(() => setDbs([])) }, [activeTabId])
   return (
-    <>
+    <div className="pt-1">
       {dbs.map((d) => {
         const id = JSON.stringify({ kind: 'database', databaseId: d.id })
+        const active = activeTabId === id
         return (
-          <SidebarRow
+          <button
             key={d.id}
-            indent={0}
-            icon={<span style={{ width: 14, display: 'inline-block', textAlign: 'center' }}>{d.icon ?? '·'}</span>}
-            label={d.name}
-            active={activeTabId === id}
             onClick={() => store.open({ title: d.name, icon: d.icon, view: { kind: 'database', databaseId: d.id } })}
-          />
+            className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+            style={{
+              background: active ? 'var(--color-accent-soft)' : 'transparent',
+              color:      active ? 'var(--color-accent)'      : 'var(--color-text)',
+              fontWeight: active ? 500 : 400,
+            }}
+          >
+            <span style={{ width: 14, textAlign: 'center' }}>{d.icon ?? '·'}</span>
+            <span className="flex-1 truncate text-sm">{d.name}</span>
+          </button>
         )
       })}
       <NewItemRow label="New database" onClick={async () => {
-        const name = prompt('Database name?')
+        const name = await appPrompt('Database name?')
         if (!name) return
         const created = await k.createDatabase(name, '📋')
         setDbs((xs) => [...xs, created])
         store.open({ title: created.name, icon: '📋', view: { kind: 'database', databaseId: created.id } })
       }} />
-    </>
-  )
-}
-
-function DocsList({ activeTabId }: { activeTabId: string | null }) {
-  const [docs, setDocs] = useState<Doc[]>([])
-  useEffect(() => { k.listDocs().then(setDocs).catch(() => setDocs([])) }, [activeTabId])
-  return (
-    <>
-      {docs.map((d) => {
-        const id = JSON.stringify({ kind: 'doc', docId: d.id })
-        return (
-          <SidebarRow
-            key={d.id}
-            icon={<span style={{ width: 14, display: 'inline-block', textAlign: 'center' }}>{d.icon ?? '📄'}</span>}
-            label={d.title}
-            active={activeTabId === id}
-            onClick={() => store.open({ title: d.title, icon: d.icon, view: { kind: 'doc', docId: d.id } })}
-          />
-        )
-      })}
-      <NewItemRow label="New doc" onClick={async () => {
-        const title = prompt('Doc title?')
-        if (!title) return
-        const created = await k.createDoc(title, { icon: '📄' })
-        setDocs((xs) => [...xs, created])
-        store.open({ title: created.title, icon: created.icon, view: { kind: 'doc', docId: created.id } })
-      }} />
-    </>
+    </div>
   )
 }
 
@@ -174,31 +247,100 @@ function AISection({ activeTabId }: { activeTabId: string | null }) {
     k.listSkills().then((r) => setSkills(r.own)).catch(() => setSkills([]))
   }, [activeTabId])
   return (
-    <>
-      <SidebarRow
-        icon={<Cpu size={14} />}
-        label={`Agents (${agents.length})`}
-        active={activeTabId === '{"kind":"agents"}'}
-        onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
-      />
-      <SidebarRow
-        icon={<Sparkles size={14} />}
-        label={`Skills (${skills.length})`}
-        active={activeTabId === '{"kind":"skills"}'}
-        onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
-      />
-    </>
+    <div className="pt-1 space-y-3">
+      <div>
+        <SectionLabel text="Agents" />
+        <button
+          onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
+          className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+          style={{
+            background: activeTabId === '{"kind":"agents"}' ? 'var(--color-accent-soft)' : 'transparent',
+            color:      activeTabId === '{"kind":"agents"}' ? 'var(--color-accent)'      : 'var(--color-text)',
+          }}
+        >
+          <Cpu size={14} />
+          <span className="flex-1 text-sm">All agents</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-subtle)' }}>{agents.length}</span>
+        </button>
+        {agents.slice(0, 6).map((a) => {
+          const id = JSON.stringify({ kind: 'agent', agentId: a.id })
+          const active = activeTabId === id
+          return (
+            <button
+              key={a.id}
+              onClick={() => store.open({ title: a.name, icon: '🤖', view: { kind: 'agent', agentId: a.id } })}
+              className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+              style={{
+                background: active ? 'var(--color-accent-soft)' : 'transparent',
+                color:      active ? 'var(--color-accent)'      : 'var(--color-text)',
+                paddingLeft: 24,
+              }}
+            >
+              <span className="flex-1 truncate text-sm">{a.name}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div>
+        <SectionLabel text="Skills" />
+        <button
+          onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
+          className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+          style={{
+            background: activeTabId === '{"kind":"skills"}' ? 'var(--color-accent-soft)' : 'transparent',
+            color:      activeTabId === '{"kind":"skills"}' ? 'var(--color-accent)'      : 'var(--color-text)',
+          }}
+        >
+          <Sparkles size={14} />
+          <span className="flex-1 text-sm">All skills</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-subtle)' }}>{skills.length}</span>
+        </button>
+        {skills.slice(0, 6).map((s) => {
+          const id = JSON.stringify({ kind: 'skill', skillId: s.id })
+          const active = activeTabId === id
+          return (
+            <button
+              key={s.id}
+              onClick={() => store.open({ title: s.displayName ?? s.name, icon: '✨', view: { kind: 'skill', skillId: s.id } })}
+              className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+              style={{
+                background: active ? 'var(--color-accent-soft)' : 'transparent',
+                color:      active ? 'var(--color-accent)'      : 'var(--color-text)',
+                paddingLeft: 24,
+              }}
+            >
+              <span className="flex-1 truncate text-sm">{s.displayName ?? s.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
-function SitesList({ activeTabId }: { activeTabId: string | null }) {
-  void activeTabId
+function SitesList() {
   return (
-    <SidebarRow
-      icon={<Globe size={14} />}
-      label="All sites"
-      onClick={() => store.open({ title: 'Sites', icon: '🌐', view: { kind: 'sites' } })}
-    />
+    <div className="pt-1">
+      <button
+        onClick={() => store.open({ title: 'Sites', icon: '🌐', view: { kind: 'sites' } })}
+        className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
+        style={{ color: 'var(--color-text)' }}
+      >
+        <Globe size={14} />
+        <span className="flex-1 text-sm">All sites</span>
+      </button>
+    </div>
+  )
+}
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <div className="px-2 pt-0.5 pb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold"
+         style={{ color: 'var(--color-text-subtle)' }}>
+      <ChevronRight size={10} className="rotate-90 opacity-60" />
+      {text}
+    </div>
   )
 }
 
@@ -206,7 +348,7 @@ function NewItemRow({ label, onClick }: { label: string; onClick: () => void }) 
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 w-full text-left px-2 py-1 rounded-md text-sm hover:bg-[var(--color-border-soft)]"
+      className="flex items-center gap-2 w-full text-left px-2 py-1 mt-1 rounded-md text-sm hover:bg-[var(--color-border-soft)]"
       style={{ color: 'var(--color-text-subtle)' }}
     >
       <Plus size={14} />
@@ -214,6 +356,3 @@ function NewItemRow({ label, onClick }: { label: string; onClick: () => void }) 
     </button>
   )
 }
-
-// (silence unused import warnings until we use them in later iterations)
-void Folder

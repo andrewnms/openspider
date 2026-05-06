@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use openspider_core::Vault;
 use serde_json::Value;
 use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info};
 
 #[derive(Clone)]
@@ -38,11 +39,20 @@ pub async fn serve(state: AppState, addr: &str) -> anyhow::Result<()> {
         state.self_token.clone(),
     );
 
+    // Local-only desktop server: allow any origin so the Tauri WKWebView
+    // (origin `tauri://localhost`) can POST to it. Without this the browser
+    // CORS preflight blocks every request silently.
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let app = Router::new()
         .route("/", get(root))
         .route("/mcp", post(handle_mcp))
         .route("/webhook/:agent_id", post(handle_webhook))
         .route("/oauth/callback", get(handle_oauth_callback))
+        .layer(cors)
         .with_state(state);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("openspider MCP listening on http://{addr}/mcp");

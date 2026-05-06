@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Settings, Key, Globe, Database } from 'lucide-react'
+import { Settings, Key, Globe, Database, Sparkles } from '../lib/icons'
 import { call } from '../lib/mcp'
+import { loadAIConfig, saveAIConfig, type AIConfig } from '../lib/ai'
 
 export function SettingsView() {
   const [vault, setVault] = useState<string>('')
@@ -55,8 +56,136 @@ export function SettingsView() {
             Embedded server. Point any MCP client (bettersync, Claude Code, your scripts) at this URL.
           </div>
         </Card>
+
+        <AICard />
       </div>
     </div>
+  )
+}
+
+function AICard() {
+  const [cfg, setCfg]   = useState<AIConfig>(() => loadAIConfig())
+  const [saved, setSaved] = useState(false)
+
+  function save() {
+    saveAIConfig(cfg)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1400)
+  }
+
+  function preset(name: 'openai' | 'groq' | 'ollama' | 'lmstudio') {
+    if (name === 'openai')   setCfg((c) => ({ ...c, endpoint: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }))
+    if (name === 'groq')     setCfg((c) => ({ ...c, endpoint: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' }))
+    if (name === 'ollama')   setCfg((c) => ({ ...c, endpoint: 'http://localhost:11434/v1', model: 'qwen2.5:7b', apiKey: 'ollama' }))
+    if (name === 'lmstudio') setCfg((c) => ({ ...c, endpoint: 'http://localhost:1234/v1', model: 'local-model', apiKey: 'lm-studio' }))
+  }
+
+  return (
+    <section className="rounded-lg p-5"
+             style={{ background: 'var(--color-bg-soft)', border: '1px solid var(--color-border)' }}>
+      <div className="flex items-center gap-2 mb-3 font-semibold text-sm">
+        <Sparkles size={16} />
+        AI · bring your own LLM
+      </div>
+      <div className="text-xs mb-4" style={{ color: 'var(--color-text-subtle)' }}>
+        Any OpenAI-compatible endpoint works: OpenAI, Groq, OpenRouter, Ollama, LM Studio,
+        vLLM, llama.cpp. Your key stays in this device's localStorage — never sent anywhere
+        except your chosen endpoint.
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {(['openai', 'groq', 'ollama', 'lmstudio'] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => preset(p)}
+            className="text-[11px] px-2 py-1 rounded font-medium hover:bg-[var(--color-border-soft)]"
+            style={{
+              background: 'var(--color-bg-strong)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            {p === 'openai' ? 'OpenAI' : p === 'groq' ? 'Groq' : p === 'ollama' ? 'Ollama' : 'LM Studio'}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-3 items-center text-sm">
+        <label className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Endpoint</label>
+        <input
+          value={cfg.endpoint}
+          onChange={(e) => setCfg({ ...cfg, endpoint: e.target.value })}
+          placeholder="https://api.openai.com/v1"
+          className="px-3 py-1.5 mono text-xs outline-none"
+          style={{
+            background: 'var(--color-bg-strong)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '0.33em',
+            color: 'var(--color-text)',
+          }}
+        />
+
+        <label className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Model</label>
+        <input
+          value={cfg.model}
+          onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
+          placeholder="gpt-4o-mini"
+          className="px-3 py-1.5 mono text-xs outline-none"
+          style={{
+            background: 'var(--color-bg-strong)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '0.33em',
+            color: 'var(--color-text)',
+          }}
+        />
+
+        <label className="text-xs" style={{ color: 'var(--color-text-muted)' }}>API key</label>
+        <input
+          type="password"
+          value={cfg.apiKey ?? ''}
+          onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
+          placeholder="sk-… (optional for local servers)"
+          className="px-3 py-1.5 mono text-xs outline-none"
+          style={{
+            background: 'var(--color-bg-strong)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '0.33em',
+            color: 'var(--color-text)',
+          }}
+        />
+
+        <label className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Temperature</label>
+        <input
+          type="number"
+          step={0.1} min={0} max={2}
+          value={cfg.temperature ?? 0.7}
+          onChange={(e) => setCfg({ ...cfg, temperature: parseFloat(e.target.value) })}
+          className="px-3 py-1.5 mono text-xs outline-none w-24"
+          style={{
+            background: 'var(--color-bg-strong)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '0.33em',
+            color: 'var(--color-text)',
+          }}
+        />
+      </div>
+
+      <div className="mt-4 flex justify-end items-center gap-2">
+        {saved && (
+          <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ Saved</span>
+        )}
+        <button
+          onClick={save}
+          className="px-3 py-1.5 text-sm font-medium text-white"
+          style={{
+            background: 'var(--color-accent)',
+            borderRadius: '0.33em',
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </section>
   )
 }
 

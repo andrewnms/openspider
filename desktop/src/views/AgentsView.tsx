@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, Play, Cpu } from 'lucide-react'
+import { Plus, Play, Cpu } from '../lib/icons'
 import { k, type Agent, type Run, type Trigger } from '../lib/mcp'
 import { store } from '../store'
+import { appPrompt } from '../lib/dialog'
 
 export function AgentsListView() {
   const [agents, setAgents] = useState<Agent[]>([])
@@ -16,7 +17,7 @@ export function AgentsListView() {
           <h1 className="text-2xl font-bold flex-1">Agents</h1>
           <button
             onClick={async () => {
-              const name = prompt('Agent name?'); if (!name) return
+              const name = await appPrompt('Agent name?'); if (!name) return
               const created = await k.createAgent({ name, model: 'x-ai/grok-4-fast', compiledScript: 's16.log("hello!"); return { ok: true };' })
               setRefresh((n) => n + 1)
               store.open({ title: created.name, icon: '🤖', view: { kind: 'agent', agentId: created.id } })
@@ -120,9 +121,9 @@ export function AgentView({ agentId }: { agentId: string }) {
              style={{ color: 'var(--color-text-subtle)' }}>Triggers</div>
         <button
           onClick={async () => {
-            const type = prompt('Trigger type? (cron, webhook, event, gmail, agent_change)', 'cron')
+            const type = await appPrompt('Trigger type? (cron, webhook, event, gmail, agent_change)', 'cron')
             if (!type) return
-            const cfgRaw = prompt('Config JSON?', type === 'cron' ? '{"schedule":"0 */15 * * * *"}' : '{}')
+            const cfgRaw = await appPrompt('Config JSON?', type === 'cron' ? '{"schedule":"0 */15 * * * *"}' : '{}')
             if (!cfgRaw) return
             await k.setTrigger(agent.id, type, JSON.parse(cfgRaw))
             setRefresh((n) => n + 1)

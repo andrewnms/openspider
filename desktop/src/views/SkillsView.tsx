@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles } from '../lib/icons'
 import { k, type Skill } from '../lib/mcp'
 import { store } from '../store'
+import { appPrompt } from '../lib/dialog'
 
 export function SkillsListView() {
   const [own, setOwn] = useState<Skill[]>([])
@@ -16,7 +17,7 @@ export function SkillsListView() {
           <h1 className="text-2xl font-bold flex-1">Skills</h1>
           <button
             onClick={async () => {
-              const name = prompt('Skill name (kebab-case)?'); if (!name) return
+              const name = await appPrompt('Skill name (kebab-case)?'); if (!name) return
               const created = await k.createSkill({ name, displayName: name, description: '', skillMd: `# ${name}\n\nWrite the skill here.\n` })
               setRefresh((n) => n + 1)
               store.open({ title: created.displayName ?? created.name, icon: '✨', view: { kind: 'skill', skillId: created.id } })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity } from 'lucide-react'
+import { Activity } from '../lib/icons'
 import { k, type Run } from '../lib/mcp'
 
 export function RunsView() {

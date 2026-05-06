@@ -5,9 +5,41 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenSpider</title>
+    <style>
+      /* Pre-bundle visible state. If you ever see this message, the JS bundle
+         never executed (loaded HTML, did NOT load JS). main.tsx removes
+         #boot-fallback as soon as the bundle starts. */
+      html, body { margin: 0; height: 100%; background: #fafaf9; color: #1c1917;
+        font: 14px/1.5 -apple-system, system-ui, sans-serif; }
+      #boot-fallback {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        background: #fafaf9; color: #1c1917; z-index: 99999;
+      }
+      #boot-fallback .card {
+        max-width: 460px; padding: 24px; background: #fff;
+        border: 1px solid #e7e5e4; border-radius: 8px;
+        box-shadow: 0 12px 32px -8px rgba(15,15,15,0.18);
+      }
+      #boot-fallback h1 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+      #boot-fallback p  { margin: 0 0 12px; color: #57534e; }
+      #boot-fallback code {
+        background: #f5f5f4; padding: 2px 6px; border-radius: 3px;
+        font: 12px ui-monospace, monospace;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-fallback">
+      <div class="card">
+        <h1>🕷 OpenSpider — JS bundle didn't load</h1>
+        <p>If you're seeing this card, the WKWebView loaded the HTML but the
+           JavaScript bundle never executed. This is almost always a stale
+           install or a corrupt cache.</p>
+        <p>Send me a screenshot of this exact card so I can confirm it's the
+           cache, not a runtime crash.</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

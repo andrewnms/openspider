@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Globe, Plus, Save, Trash2, Eye, FileCode } from 'lucide-react'
+import { Globe, Plus, Save, Trash2, Eye, FileCode } from '../lib/icons'
 import { k, type Site } from '../lib/mcp'
 import { store, useStore } from '../store'
+import { appPrompt, appConfirm, appAlert } from '../lib/dialog'
 
 /**
  * Sites view: three-pane VFS editor.
@@ -37,8 +38,8 @@ export function SitesListView() {
         activeSiteId={activeSiteId}
         onSelect={(id) => { setActiveSiteId(id); setActivePageId(null); setActivePath(null) }}
         onCreate={async () => {
-          const name = prompt('Site name?'); if (!name) return
-          const slug = prompt('URL slug?', name.toLowerCase().replace(/\s+/g, '-')) || undefined
+          const name = await appPrompt('Site name?'); if (!name) return
+          const slug = await appPrompt('URL slug?', name.toLowerCase().replace(/\s+/g, '-')) || undefined
           const created = await k.createSite(name, slug ?? undefined, '🌐')
           setRefresh((n) => n + 1)
           setActiveSiteId(created.id)
@@ -126,8 +127,8 @@ function PagesColumn({
         <h2 className="text-sm font-semibold flex-1">Pages</h2>
         <button
           onClick={async () => {
-            const slug  = prompt('Page slug?'); if (!slug) return
-            const title = prompt('Page title?', slug); if (!title) return
+            const slug  = await appPrompt('Page slug?'); if (!slug) return
+            const title = await appPrompt('Page title?', slug); if (!title) return
             await k.createSitePage(siteId, slug, title)
             setRefresh((n) => n + 1)
             onChanged()
@@ -206,7 +207,7 @@ function FilesPane({
               style={{ color: 'var(--color-text-subtle)' }}>Files</h3>
           <button
             onClick={async () => {
-              const path = prompt('New file path? (e.g. /about.html)', '/new.html')
+              const path = await appPrompt('New file path? (e.g. /about.html)', '/new.html')
               if (!path) return
               await k.writeSitePageFile(pageId, path, '<!-- new file -->')
               setRefresh((n) => n + 1)
@@ -284,8 +285,8 @@ function FileEditor({
         ><Save size={12} /> Save</button>
         <button
           onClick={async () => {
-            if (isEntry) { alert("Can't delete the entry file."); return }
-            if (!confirm(`Delete ${path}?`)) return
+            if (isEntry) { await appAlert("Can't delete the entry file."); return }
+            if (!await appConfirm(`Delete ${path}?`)) return
             await k.deleteSitePageFile(pageId, path)
             onDeleted()
           }}

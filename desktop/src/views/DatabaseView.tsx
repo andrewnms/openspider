@@ -1,19 +1,29 @@
 import { useEffect, useState } from 'react'
-import { Plus, MoreHorizontal } from 'lucide-react'
+import { Plus, MoreHorizontal } from '../lib/icons'
 import { k, type Database, type Page } from '../lib/mcp'
 import { store } from '../store'
 import { EditableCell } from '../components/EditableCell'
+import { appPrompt } from '../lib/dialog'
 
 export function DatabaseView({ databaseId }: { databaseId: string }) {
   const [db, setDb] = useState<Database | null>(null)
   const [pages, setPages] = useState<Page[]>([])
   const [refreshTick, setRefreshTick] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    k.getDatabase(databaseId).then(setDb).catch(() => setDb(null))
+    if (!databaseId) { setError('No database selected. Pick one in the sidebar or use New database.'); return }
+    setError(null)
+    k.getDatabase(databaseId).then(setDb).catch((e) => setError(e?.message ?? String(e)))
     k.listPages(databaseId, { limit: 200 }).then((r) => setPages(r.items)).catch(() => setPages([]))
   }, [databaseId, refreshTick])
 
+  if (error) return (
+    <div className="p-12" style={{ color: 'var(--color-text-muted)' }}>
+      <div className="text-sm mb-2">⚠ Couldn't load database.</div>
+      <div className="text-xs mono" style={{ color: 'var(--color-text-subtle)' }}>{error}</div>
+    </div>
+  )
   if (!db) return <Loading />
 
   // Properties in display order: title first, then by `position`.
@@ -24,16 +34,16 @@ export function DatabaseView({ databaseId }: { databaseId: string }) {
   })
 
   async function addRow() {
-    const title = prompt('Title for new row?')
+    const title = await appPrompt('Title for new row?')
     if (!title) return
     await k.createPage(databaseId, title)
     setRefreshTick((n) => n + 1)
   }
 
   async function addProperty() {
-    const name = prompt('Property name?')
+    const name = await appPrompt('Property name?')
     if (!name) return
-    const type = prompt('Property type? (text, number, select, multi_select, date, checkbox, email, url, phone, relation)', 'text')
+    const type = await appPrompt('Property type? (text, number, select, multi_select, date, checkbox, email, url, phone, relation)', 'text')
     if (!type) return
     await k.createProperty(databaseId, name, type)
     setRefreshTick((n) => n + 1)

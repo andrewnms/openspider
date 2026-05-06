@@ -1,335 +1,226 @@
 /**
- * Markdown editor: Tiptap (ProseMirror) + tiptap-markdown for round-trip.
- * Plus a custom WikiLink extension that renders [[Title]] / [[Title|uuid]]
- * as clickable inline chips. Click → resolve target → open in a tab.
+ * Notion-style block editor backed by BlockNote (MPL 2.0 — commercial-friendly).
+ *
+ * BlockNote ships the entire Notion-feel out of the box: slash menu, side
+ * menu (drag handle + add button), formatting toolbar, multi-column layout,
+ * etc. We keep the same `value: string, onChange: (md: string) => void`
+ * contract that DocView already passes, so the rest of the app is untouched.
+ *
+ * Slash menu: BlockNote's defaults + our custom items (AI writing, today's
+ * date, daily-note link, doc / database refs). Disabling the default menu
+ * via the `<BlockNoteView slashMenu={false}>` prop lets us own the trigger
+ * with `<SuggestionMenuController>` and merge defaults with custom entries.
  */
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
-import { useEditor, EditorContent, type Editor } from '@tiptap/react'
-import { Node, mergeAttributes, Extension, type InputRule } from '@tiptap/core'
-import Suggestion from '@tiptap/suggestion'
-import { PluginKey } from '@tiptap/pm/state'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import { Markdown } from 'tiptap-markdown'
+import { useCallback, useEffect, useRef } from 'react'
+import {
+  useCreateBlockNote,
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
+  type DefaultReactSuggestionItem,
+} from '@blocknote/react'
+import { BlockNoteView } from '@blocknote/mantine'
+import { filterSuggestionItems } from '@blocknote/core'
+import '@blocknote/core/fonts/inter.css'
+import '@blocknote/mantine/style.css'
+import { setActiveEditor, pingEditorContent } from '../lib/editorBus'
+import { useStore, store } from '../store'
 import { k } from '../lib/mcp'
-import { store } from '../store'
-
-/* ────────── Wiki-link extension ──────────────────────────────────────── */
-
-declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
-    wikiLink: { insertWikiLink: (title: string, uuid?: string) => ReturnType }
-  }
-}
-
-const WikiLink = Node.create({
-  name: 'wikiLink',
-  group: 'inline',
-  inline: true,
-  atom: true,
-  selectable: true,
-
-  addAttributes() {
-    return {
-      title: { default: '' },
-      uuid:  { default: null as string | null },
-    }
-  },
-
-  parseHTML() {
-    return [{
-      tag: 'a[data-wiki-link]',
-      getAttrs: (el) => {
-        const t = el.getAttribute('data-title') ?? ''
-        const u = el.getAttribute('data-uuid') ?? null
-        return { title: t, uuid: u }
-      },
-    }]
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    const title = HTMLAttributes.title ?? ''
-    const uuid  = HTMLAttributes.uuid
-    return ['a',
-      mergeAttributes({
-        'data-wiki-link': 'true',
-        'data-title': title,
-        'data-uuid':  uuid ?? '',
-        class: 'wiki-link',
-        href: '#',
-      }),
-      `${title}`,
-    ]
-  },
-
-  // Save back as plain markdown text [[title|uuid]] / [[title]].
-  addStorage() {
-    return {
-      markdown: {
-        serialize(state: { write: (s: string) => void }, node: { attrs: { title: string; uuid: string | null } }) {
-          const { title, uuid } = node.attrs
-          state.write(uuid ? `[[${title}|${uuid}]]` : `[[${title}]]`)
-        },
-        parse: {
-          /* parsing handled below via input rule + a regex pre-pass */
-        },
-      },
-    }
-  },
-
-  addInputRules() {
-    const type = this.type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rule: any = {
-      find: /\[\[([^\]|]+?)(?:\|([0-9a-f-]+))?\]\]$/,
-      handler: ({ state, range, match }: { state: any; range: { from: number; to: number }; match: RegExpMatchArray }) => {
-        const title = match[1].trim()
-        const uuid  = match[2] ?? null
-        const tr = state.tr.replaceWith(range.from, range.to, type.create({ title, uuid }))
-        tr.insertText(' ')
-      },
-      undoable: true,
-    }
-    return [rule] as InputRule[]
-  },
-})
-
-/** After Markdown.serialize() runs, parse [[…]] in the resulting text into
- *  WikiLink nodes. We do this by intercepting the markdown.set() value when
- *  we LOAD content. Cleaner than fighting tiptap-markdown's parser pipeline. */
-function preprocessMarkdownLoad(md: string): string {
-  // No-op: WikiLink input rule handles user typing. For initial load we
-  // convert [[…]] to inline-html `<a data-wiki-link …>` so Tiptap's HTML
-  // parser materializes the node.
-  return md.replace(/\[\[([^\]|\n]+?)(?:\|([0-9a-f-]+))?\]\]/g, (_, title, uuid) => {
-    const safe = String(title).replace(/"/g, '&quot;')
-    const u = uuid ? String(uuid).replace(/"/g, '&quot;') : ''
-    return `<a data-wiki-link="true" data-title="${safe}" data-uuid="${u}" class="wiki-link" href="#">${safe}</a>`
-  })
-}
-
-/* ────────── Wiki-link autocomplete (suggestion on `[[`) ─────────────── */
-
-type WikiSuggestionItem = {
-  title: string
-  uuid:  string
-  kind:  'page' | 'doc'
-  databaseId?: string
-}
-
-const WIKI_SUGGESTION_KEY = new PluginKey('wikiSuggestion')
-
-/** Returns a Tiptap Extension that fires a popup when the user types `[[`.
- *  The popup is a simple positioned div populated with results from openspider
- *  search. Selecting one inserts a WikiLink node with the canonical uuid. */
-function makeWikiSuggestion(setPopup: (p: PopupState | null) => void) {
-  return Extension.create({
-    name: 'wikiSuggestion',
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          char: '[[',
-          allowSpaces: true,
-          startOfLine: false,
-          pluginKey: WIKI_SUGGESTION_KEY,
-          command: ({ editor, range, props }) => {
-            const item = props as WikiSuggestionItem
-            // Replace the trigger range ("[[query") with a WikiLink node + space.
-            editor.chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent({
-                type: 'wikiLink',
-                attrs: { title: item.title, uuid: item.uuid },
-              })
-              .insertContent(' ')
-              .run()
-          },
-          items: async ({ query }) => {
-            // Query workspace search; map hits into suggestion items.
-            try {
-              const r = await k.search(query || '', 8)
-              const hits = r.items as Array<Record<string, unknown>>
-              const out: WikiSuggestionItem[] = []
-              for (const h of hits) {
-                if (h.kind === 'page' && typeof h.id === 'string' && typeof h.databaseId === 'string') {
-                  out.push({ title: String(h.primaryTitle ?? '(untitled)'), uuid: h.id, kind: 'page', databaseId: h.databaseId })
-                } else if (h.kind === 'doc' && typeof h.id === 'string') {
-                  out.push({ title: String(h.title ?? '(untitled)'), uuid: h.id, kind: 'doc' })
-                }
-              }
-              return out
-            } catch { return [] }
-          },
-          render: () => {
-            // Light-weight portal: position a div, mutate items list, expose
-            // arrow/Enter handlers via `onKeyDown`.
-            let selected = 0
-            let items: WikiSuggestionItem[] = []
-            let onSelect: ((idx: number) => void) | null = null
-
-            return {
-              onStart: (props) => {
-                items = props.items as WikiSuggestionItem[]
-                selected = 0
-                onSelect = (idx: number) => props.command(items[idx])
-                const r = props.clientRect?.()
-                if (r) setPopup({ x: r.left, y: r.bottom + 4, items, selected, onSelect })
-              },
-              onUpdate: (props) => {
-                items = props.items as WikiSuggestionItem[]
-                if (selected >= items.length) selected = 0
-                onSelect = (idx: number) => props.command(items[idx])
-                const r = props.clientRect?.()
-                if (r) setPopup({ x: r.left, y: r.bottom + 4, items, selected, onSelect })
-              },
-              onKeyDown: ({ event }) => {
-                if (event.key === 'ArrowDown') { selected = (selected + 1) % Math.max(items.length, 1); setPopup({ items, selected, onSelect: onSelect!, x: 0, y: 0, _stick: true }); return true }
-                if (event.key === 'ArrowUp')   { selected = (selected - 1 + items.length) % Math.max(items.length, 1); setPopup({ items, selected, onSelect: onSelect!, x: 0, y: 0, _stick: true }); return true }
-                if (event.key === 'Enter' || event.key === 'Tab') {
-                  if (items[selected]) { onSelect?.(selected); return true }
-                }
-                if (event.key === 'Escape') { setPopup(null); return true }
-                return false
-              },
-              onExit: () => { setPopup(null) },
-            }
-          },
-        }),
-      ]
-    },
-  })
-}
-
-type PopupState = {
-  x: number
-  y: number
-  items: WikiSuggestionItem[]
-  selected: number
-  onSelect: (idx: number) => void
-  _stick?: boolean // when true, ignore x/y (keep last anchor)
-}
-
-/* ────────── Wiki-link click resolver ──────────────────────────────────── */
-
-async function openWikiTarget(title: string, uuid: string | null) {
-  // Try uuid-based lookup first (stable). Search both pages and docs.
-  if (uuid) {
-    try { const p = await k.getPage(uuid); store.open({ title: p.primaryTitle, view: { kind: 'page', pageId: p.id, databaseId: p.databaseId } }); return } catch { /* */ }
-    try { const d = await k.getDoc(uuid);  store.open({ title: d.title, icon: d.icon, view: { kind: 'doc', docId: d.id } }); return } catch { /* */ }
-  }
-  // Title-based fallback via search.
-  const r = await k.search(title, 5)
-  const hit = (r.items as Array<Record<string, unknown>>).find(
-    (h) => String(h.primaryTitle ?? h.title ?? '') === title,
-  ) ?? r.items[0]
-  if (!hit) return
-  const h = hit as Record<string, unknown>
-  if (h.kind === 'page' && typeof h.id === 'string' && typeof h.databaseId === 'string') {
-    store.open({ title: String(h.primaryTitle), view: { kind: 'page', pageId: h.id, databaseId: h.databaseId } })
-  } else if (h.kind === 'doc' && typeof h.id === 'string') {
-    store.open({ title: String(h.title), view: { kind: 'doc', docId: h.id } })
-  }
-}
-
-/* ────────── React component ──────────────────────────────────────────── */
+import { isAIConfigured } from '../lib/ai'
+import { openAIMenuForSelection } from './AIMenu'
+import { appPrompt, appAlert } from '../lib/dialog'
 
 export function MarkdownEditor({
-  value, onChange, placeholder = 'Start writing…',
+  value, onChange, placeholder,
 }: { value: string; onChange: (md: string) => void; placeholder?: string }) {
-  const initialRef = useRef(preprocessMarkdownLoad(value))
-  const valueRef = useRef(value)
-  const [popup, setPopup] = useState<PopupState | null>(null)
-  const popupAnchor = useRef<{ x: number; y: number } | null>(null)
-  // Keep last anchor when only selection is updating (arrow nav)
-  if (popup && !popup._stick) popupAnchor.current = { x: popup.x, y: popup.y }
-  const drawX = popup?._stick ? popupAnchor.current?.x ?? 0 : popup?.x ?? 0
-  const drawY = popup?._stick ? popupAnchor.current?.y ?? 0 : popup?.y ?? 0
+  // Track the last value we serialized so we can ignore echoes from our own
+  // setContent and avoid infinite update loops between editor → onChange →
+  // parent state → value prop.
+  const lastSerializedRef = useRef<string>(value)
+  const readyRef = useRef(false)
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Placeholder.configure({ placeholder }),
-      Markdown.configure({
-        html: true,
-        linkify: true,
-        breaks: true,
-        transformPastedText: true,
-      }),
-      WikiLink,
-      makeWikiSuggestion(setPopup),
-    ],
-    content: initialRef.current,
-    onUpdate: ({ editor }) => {
-      // tiptap-markdown attaches getMarkdown() under storage.markdown
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const m = (editor.storage as any).markdown as { getMarkdown?: () => string } | undefined
-      const md = m?.getMarkdown?.() ?? editor.getHTML()
-      valueRef.current = md
-      onChange(md)
-    },
-    editorProps: {
-      attributes: {
-        class: 'tiptap prose-base focus:outline-none w-full max-w-none',
-      },
-      handleClick: (_view, _pos, event) => {
-        const t = event.target as HTMLElement
-        if (t?.closest('a[data-wiki-link]')) {
-          event.preventDefault()
-          const a = t.closest('a[data-wiki-link]') as HTMLAnchorElement
-          const title = a.getAttribute('data-title') ?? ''
-          const uuid  = a.getAttribute('data-uuid') || null
-          void openWikiTarget(title, uuid)
-          return true
-        }
-        return false
-      },
-    },
+  // Theme follows the global store so light/dark switches in real time.
+  const theme = useStore((s) => s.theme)
+
+  const editor = useCreateBlockNote({
+    initialContent: undefined,
   })
 
-  // Keep editor in sync if `value` changes from outside (eg. switching tabs).
+  // Initial markdown → blocks parse (and any external value change).
   useEffect(() => {
-    if (!editor) return
-    if (value !== valueRef.current) {
-      valueRef.current = value
-      editor.commands.setContent(preprocessMarkdownLoad(value), { emitUpdate: false })
-    }
+    let cancelled = false
+    if (value === lastSerializedRef.current && readyRef.current) return
+    ;(async () => {
+      const blocks = await editor.tryParseMarkdownToBlocks(value || '')
+      if (cancelled) return
+      editor.replaceBlocks(editor.document, blocks)
+      lastSerializedRef.current = value
+      readyRef.current = true
+      pingEditorContent()
+    })()
+    return () => { cancelled = true }
   }, [value, editor])
 
+  // Serialize blocks → markdown on every edit, push to parent + ping panels.
+  useEffect(() => {
+    return editor.onChange(async () => {
+      if (!readyRef.current) return
+      pingEditorContent()
+      const md = await editor.blocksToMarkdownLossy()
+      if (md === lastSerializedRef.current) return
+      lastSerializedRef.current = md
+      onChange(md)
+    })
+  }, [editor, onChange])
+
+  // Publish the editor instance for sibling panels.
+  useEffect(() => {
+    setActiveEditor(editor)
+    return () => { setActiveEditor(null) }
+  }, [editor])
+
+  // Build the merged slash-menu item list. Defaults from BlockNote + the
+  // custom additions defined below. Memoized via useCallback because
+  // SuggestionMenuController calls it on every keystroke.
+  const getSlashItems = useCallback(async (query: string) => {
+    const defaults = getDefaultReactSlashMenuItems(editor)
+    const custom = customSlashItems(editor)
+    return filterSuggestionItems([...custom, ...defaults], query)
+  }, [editor])
+
+  void placeholder
+
   return (
-    <>
-      <EditorContent editor={editor as Editor | null} />
-      {popup && popup.items.length > 0 && (
-        <div
-          className="fixed z-50 w-64 rounded-lg shadow-xl overflow-hidden no-drag"
-          style={{
-            left: drawX,
-            top:  drawY,
-            background: 'var(--color-bg-strong)',
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          {popup.items.map((it, i) => (
-            <button
-              key={`${it.kind}:${it.uuid}`}
-              onClick={() => popup.onSelect(i)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm"
-              style={{
-                background: i === popup.selected ? 'var(--color-accent-soft)' : 'transparent',
-                color: i === popup.selected ? 'var(--color-accent)' : 'var(--color-text)',
-              }}
-            >
-              <span className="text-xs uppercase tracking-wider w-12"
-                    style={{ color: 'var(--color-text-subtle)' }}>{it.kind}</span>
-              <span className="flex-1 truncate">{it.title}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </>
+    <div className="bn-host" style={{ minHeight: '60vh' }}>
+      <BlockNoteView editor={editor} theme={theme} slashMenu={false}>
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={getSlashItems}
+        />
+      </BlockNoteView>
+    </div>
   )
 }
 
-// Suppress unused-imports until we need them.
-void useImperativeHandle; void forwardRef
+/* ────────── Custom slash items ──────────────────────────────────────── */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function customSlashItems(editor: any): DefaultReactSuggestionItem[] {
+  return [
+    {
+      title: 'AI writing',
+      subtext: isAIConfigured()
+        ? 'Continue / summarise / rewrite with your LLM'
+        : 'Configure in Settings → AI first',
+      aliases: ['ai', 'gpt', 'llm', 'write'],
+      group: 'AI',
+      icon: <span style={{ fontSize: 14 }}>✨</span>,
+      onItemClick: async () => {
+        if (!isAIConfigured()) {
+          await appAlert('Configure your AI endpoint + model in Settings → AI first.')
+          store.open({ title: 'Settings', icon: '⚙️', view: { kind: 'settings' } })
+          return
+        }
+        // Pull a small context window — last 1000 chars of the doc — and use
+        // the cursor's current block as the "selection" for the AI menu.
+        try {
+          const md = await editor.blocksToMarkdownLossy?.() ?? ''
+          openAIMenuForSelection({
+            x: window.innerWidth / 2 - 160,
+            y: window.innerHeight / 3,
+            selection: '',
+            context:   md.slice(-1500),
+          })
+        } catch {
+          openAIMenuForSelection({
+            x: window.innerWidth / 2 - 160,
+            y: window.innerHeight / 3,
+            selection: '',
+            context:   '',
+          })
+        }
+      },
+    },
+    {
+      title: "Today's date",
+      subtext: 'Insert YYYY-MM-DD at the cursor',
+      aliases: ['date', 'today', 'now'],
+      group: 'Insert',
+      icon: <span style={{ fontSize: 14 }}>📅</span>,
+      onItemClick: () => {
+        const d = new Date()
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        editor.insertInlineContent?.(stamp + ' ')
+      },
+    },
+    {
+      title: 'Daily note',
+      subtext: "Open or create today's daily note",
+      aliases: ['daily', 'journal'],
+      group: 'Insert',
+      icon: <span style={{ fontSize: 14 }}>📓</span>,
+      onItemClick: async () => {
+        const d = new Date()
+        const title = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        try {
+          const docs = await k.listDocs()
+          const existing = docs.find((doc) => doc.title === title)
+          const doc = existing ?? await k.createDoc(title, { icon: '📅' })
+          store.open({ title: doc.title, icon: doc.icon ?? '📅', view: { kind: 'doc', docId: doc.id } })
+        } catch (e) {
+          console.error('daily note failed', e)
+        }
+      },
+    },
+    {
+      title: 'Doc link',
+      subtext: 'Insert a [[wiki link]] to another doc',
+      aliases: ['link', 'doc', 'ref', 'wiki'],
+      group: 'Insert',
+      icon: <span style={{ fontSize: 14 }}>🔗</span>,
+      onItemClick: async () => {
+        const docs = await k.listAllDocs().catch(() => [])
+        if (docs.length === 0) {
+          await appAlert('No docs to link to yet. Create one first.')
+          return
+        }
+        const titles = docs.map((d) => d.title).join(' · ')
+        const pick = await appPrompt(
+          'Type the exact title of the doc to link to:',
+          docs[0].title,
+        )
+        if (!pick) return
+        const match = docs.find((d) => d.title.toLowerCase() === pick.toLowerCase())
+        if (!match) {
+          await appAlert(`No doc named "${pick}". Available: ${titles.slice(0, 200)}…`)
+          return
+        }
+        editor.insertInlineContent?.(`[[${match.title}]] `)
+      },
+    },
+    {
+      title: 'Database link',
+      subtext: 'Reference a database by name',
+      aliases: ['database', 'db', 'table'],
+      group: 'Insert',
+      icon: <span style={{ fontSize: 14 }}>📋</span>,
+      onItemClick: async () => {
+        const dbs = await k.listDatabases().catch(() => [])
+        if (dbs.length === 0) {
+          await appAlert('No databases yet. Create one from the sidebar first.')
+          return
+        }
+        const pick = await appPrompt(
+          'Type the database name to link:',
+          dbs[0].name,
+        )
+        if (!pick) return
+        const match = dbs.find((d) => d.name.toLowerCase() === pick.toLowerCase())
+        if (!match) {
+          await appAlert(`No database named "${pick}".`)
+          return
+        }
+        editor.insertInlineContent?.(`[[${match.name}]] `)
+      },
+    },
+  ]
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X } from '../lib/icons'
 import { k } from '../lib/mcp'
 import { store, useStore } from '../store'
 
@@ -38,7 +38,7 @@ export function SearchPalette() {
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 grid place-items-start pt-[15vh] no-drag"
+    <div className="fixed inset-0 z-50 grid place-items-center no-drag"
          style={{ background: 'rgba(0,0,0,0.3)' }}
          onClick={() => store.setSearchOpen(false)}>
       <div className="w-[600px] max-w-[90vw] rounded-xl shadow-2xl overflow-hidden"
