@@ -17,12 +17,13 @@ import { Save as ArrowDownTray, Sparkles } from '../lib/icons'
 import { k } from '../lib/mcp'
 
 type Parsed = { title: string; body: string; icon?: string }
-type Format = 'jsonArray' | 'ndjson' | 'chatMessages' | 'plainList'
+type Format = 'jsonArray' | 'ndjson' | 'chatMessages' | 'whatsapp' | 'plainList'
 
 const FORMATS: { id: Format; label: string; sub: string }[] = [
   { id: 'jsonArray',    label: 'JSON array of {title, body}', sub: 'Each object becomes one doc.' },
   { id: 'ndjson',       label: 'NDJSON (one object per line)', sub: 'Same as JSON array but newline-delimited.' },
   { id: 'chatMessages', label: 'Chat messages [{from, text, ts?}]',  sub: 'Bundled into a single conversation doc.' },
+  { id: 'whatsapp',     label: 'WhatsApp text export (_chat.txt)',   sub: 'Paste the contents of an exported chat .txt.' },
   { id: 'plainList',    label: 'Plain text — one title per line',    sub: 'Empty docs with the line as title.' },
 ]
 
@@ -174,6 +175,10 @@ const PLACEHOLDERS: Record<Format, string> = {
   { "from": "Aime", "text": "Hey", "ts": "2024-09-01T08:00:00Z" },
   { "from": "Me",   "text": "Yo!", "ts": "2024-09-01T08:00:30Z" }
 ]`,
+  whatsapp: `[12/31/22, 11:59:59 PM] Jane Doe: Hey there
+[12/31/22, 11:59:59 PM] John Doe: Yo
+[1/1/23, 12:00:01 AM] Jane Doe: multi-line messages
+just wrap onto the next line`,
   plainList: `Strategy notes
 Recipe inbox
 Reading list
@@ -188,8 +193,91 @@ function parseInput(raw: string, format: Format): Parsed[] {
     case 'jsonArray':    return parseJsonArray(text)
     case 'ndjson':       return parseNdjson(text)
     case 'chatMessages': return parseChatMessages(text)
+    case 'whatsapp':     return parseWhatsapp(text)
     case 'plainList':    return parsePlainList(text)
   }
+}
+
+/* WhatsApp text export parser — port of bettersync's parsers/whatsapp.mjs.
+   The file system traversal half doesn't apply here (the user pastes the
+   raw .txt contents), so this is just the line-based message decoder. */
+
+const RE_BRACKETED   = /^\[(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?\]\s*(.*?)$/
+const RE_UNBRACKETED = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?\s*[-–]\s*(.*?)$/
+
+function parseWhatsapp(text: string): Parsed[] {
+  const lines = text.split(/\r?\n/)
+  type Msg = { tsIso: string; sender: string | null; body: string[] }
+  const messages: Msg[] = []
+  let current: Msg | null = null
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/‎|‏/g, '')  // strip LRM/RLM
+    const head = parseWhatsappHeader(line)
+    if (head) {
+      if (current) messages.push(current)
+      current = {
+        tsIso: head.tsIso,
+        sender: head.sender,
+        body:   head.body ? [head.body] : [],
+      }
+    } else if (current) {
+      current.body.push(line)
+    }
+  }
+  if (current) messages.push(current)
+  if (messages.length === 0) {
+    throw new Error('No WhatsApp-format lines detected. Lines must start with a [date, time] prefix.')
+  }
+
+  // Format the conversation as a markdown doc, oldest-first.
+  const md = messages.map((m) => {
+    const ts = new Date(m.tsIso).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+    const body = m.body.join('\n').trim()
+    return `**${m.sender ?? '·system·'}** &middot; ${ts}\n\n${body}`
+  }).join('\n\n---\n\n')
+
+  // Title from the first sender (best guess) and the first message's date.
+  const firstSender = messages.find((m) => m.sender)?.sender ?? 'WhatsApp'
+  const firstDate   = messages[0]?.tsIso?.slice(0, 10) ?? ''
+  const title = firstDate ? `${firstSender} — ${firstDate}` : `Conversation with ${firstSender}`
+
+  return [{ title, icon: '💬', body: md }]
+}
+
+function parseWhatsappHeader(line: string): { tsIso: string; sender: string | null; body: string } | null {
+  const m = RE_BRACKETED.exec(line) ?? RE_UNBRACKETED.exec(line)
+  if (!m) return null
+  const [, p1, p2, year, hh, mm, ss, ampm, rest] = m
+  const tsIso = buildIso(p1, p2, year, hh, mm, ss, ampm)
+  if (!tsIso) return null
+  // Split "Sender: body" off `rest`. System messages have no colon.
+  const colonIdx = rest.indexOf(':')
+  let sender: string | null = null, body = rest
+  if (colonIdx > 0 && colonIdx < 80) {
+    sender = rest.slice(0, colonIdx).trim()
+    body   = rest.slice(colonIdx + 1).trim()
+  }
+  return { tsIso, sender, body }
+}
+
+function buildIso(p1: string, p2: string, year: string, hh: string, mm: string, ss?: string, ampm?: string): string | null {
+  const a = parseInt(p1, 10), b = parseInt(p2, 10)
+  let y = parseInt(year, 10)
+  if (y < 100) y += y >= 70 ? 1900 : 2000
+  // Heuristic: if either token > 12 the >12 one must be the day.
+  let day: number, month: number
+  if (a > 12 && b <= 12)      { day = a; month = b }
+  else if (b > 12 && a <= 12) { day = b; month = a }
+  else                         { day = b; month = a } // ambiguous → mm/dd (US default)
+  let hour = parseInt(hh, 10)
+  if (ampm) { hour = hour % 12; if (/p/i.test(ampm)) hour += 12 }
+  const minute = parseInt(mm, 10)
+  const second = ss ? parseInt(ss, 10) : 0
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  return new Date(Date.UTC(y, month - 1, day, hour, minute, second)).toISOString()
 }
 
 function parseJsonArray(text: string): Parsed[] {
