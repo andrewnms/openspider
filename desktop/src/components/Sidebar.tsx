@@ -18,10 +18,10 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import {
-  Database as DBIcon, FileText, Cpu, Globe, Activity, Settings,
-  ChevronRight, Plus, PanelLeftClose, PanelLeftOpen, Sparkles,
+  Database as DBIcon, FileText, Globe, Activity, Settings,
+  Plus, PanelLeftClose, PanelLeftOpen,
 } from '../lib/icons'
-import { k, type Database, type Agent, type Skill } from '../lib/mcp'
+import { k, type Database } from '../lib/mcp'
 import { store, useStore, type SidebarSection } from '../store'
 import { appPrompt } from '../lib/dialog'
 import { DocTree } from './DocTree'
@@ -77,7 +77,6 @@ export function Sidebar() {
             <div className="flex-1 overflow-y-auto px-2 pb-3 text-sm">
               {section === 'docs'      && <DocTree activeTabId={activeTabId} refreshTick={0} />}
               {section === 'databases' && <DatabasesList activeTabId={activeTabId} />}
-              {section === 'ai'        && <AISection activeTabId={activeTabId} />}
               {section === 'sites'     && <SitesList />}
             </div>
           </div>
@@ -114,12 +113,6 @@ function Rail({ collapsed, section }: { collapsed: boolean; section: SidebarSect
         label="Databases"
         active={!collapsed && section === 'databases'}
         onClick={() => store.setSidebarSection('databases')}
-      />
-      <RailBtn
-        icon={<Cpu size={16} />}
-        label="AI"
-        active={!collapsed && section === 'ai'}
-        onClick={() => store.setSidebarSection('ai')}
       />
       <RailBtn
         icon={<Globe size={16} />}
@@ -179,12 +172,10 @@ function PanelHeader({ section }: { section: SidebarSection }) {
   const title =
     section === 'docs'      ? 'Doc Tree' :
     section === 'databases' ? 'Databases' :
-    section === 'ai'        ? 'AI' :
     'Sites'
   const Icon =
     section === 'docs'      ? FileText :
     section === 'databases' ? DBIcon :
-    section === 'ai'        ? Cpu :
     Globe
   return (
     <header
@@ -239,86 +230,6 @@ function DatabasesList({ activeTabId }: { activeTabId: string | null }) {
   )
 }
 
-function AISection({ activeTabId }: { activeTabId: string | null }) {
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [skills, setSkills] = useState<Skill[]>([])
-  useEffect(() => {
-    k.listAgents().then(setAgents).catch(() => setAgents([]))
-    k.listSkills().then((r) => setSkills(r.own)).catch(() => setSkills([]))
-  }, [activeTabId])
-  return (
-    <div className="pt-1 space-y-3">
-      <div>
-        <SectionLabel text="Agents" />
-        <button
-          onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
-          className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
-          style={{
-            background: activeTabId === '{"kind":"agents"}' ? 'var(--color-accent-soft)' : 'transparent',
-            color:      activeTabId === '{"kind":"agents"}' ? 'var(--color-accent)'      : 'var(--color-text)',
-          }}
-        >
-          <Cpu size={14} />
-          <span className="flex-1 text-sm">All agents</span>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-subtle)' }}>{agents.length}</span>
-        </button>
-        {agents.slice(0, 6).map((a) => {
-          const id = JSON.stringify({ kind: 'agent', agentId: a.id })
-          const active = activeTabId === id
-          return (
-            <button
-              key={a.id}
-              onClick={() => store.open({ title: a.name, icon: '🤖', view: { kind: 'agent', agentId: a.id } })}
-              className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
-              style={{
-                background: active ? 'var(--color-accent-soft)' : 'transparent',
-                color:      active ? 'var(--color-accent)'      : 'var(--color-text)',
-                paddingLeft: 24,
-              }}
-            >
-              <span className="flex-1 truncate text-sm">{a.name}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      <div>
-        <SectionLabel text="Skills" />
-        <button
-          onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
-          className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
-          style={{
-            background: activeTabId === '{"kind":"skills"}' ? 'var(--color-accent-soft)' : 'transparent',
-            color:      activeTabId === '{"kind":"skills"}' ? 'var(--color-accent)'      : 'var(--color-text)',
-          }}
-        >
-          <Sparkles size={14} />
-          <span className="flex-1 text-sm">All skills</span>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-subtle)' }}>{skills.length}</span>
-        </button>
-        {skills.slice(0, 6).map((s) => {
-          const id = JSON.stringify({ kind: 'skill', skillId: s.id })
-          const active = activeTabId === id
-          return (
-            <button
-              key={s.id}
-              onClick={() => store.open({ title: s.displayName ?? s.name, icon: '✨', view: { kind: 'skill', skillId: s.id } })}
-              className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-left hover:bg-[var(--color-border-soft)]"
-              style={{
-                background: active ? 'var(--color-accent-soft)' : 'transparent',
-                color:      active ? 'var(--color-accent)'      : 'var(--color-text)',
-                paddingLeft: 24,
-              }}
-            >
-              <span className="flex-1 truncate text-sm">{s.displayName ?? s.name}</span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function SitesList() {
   return (
     <div className="pt-1">
@@ -330,16 +241,6 @@ function SitesList() {
         <Globe size={14} />
         <span className="flex-1 text-sm">All sites</span>
       </button>
-    </div>
-  )
-}
-
-function SectionLabel({ text }: { text: string }) {
-  return (
-    <div className="px-2 pt-0.5 pb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold"
-         style={{ color: 'var(--color-text-subtle)' }}>
-      <ChevronRight size={10} className="rotate-90 opacity-60" />
-      {text}
     </div>
   )
 }

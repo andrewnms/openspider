@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import { Plus, Sparkles } from '../lib/icons'
 import { k, type Skill } from '../lib/mcp'
 import { store } from '../store'
@@ -10,31 +11,51 @@ export function SkillsListView() {
   const [refresh, setRefresh] = useState(0)
   useEffect(() => { k.listSkills().then((r) => { setOwn(r.own); setInstalled(r.installed) }) }, [refresh])
   return (
-    <div className="h-full overflow-auto px-8 py-8" style={{ background: 'var(--color-bg-strong)' }}>
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
-          <Sparkles size={24} className="mr-2" />
-          <h1 className="text-2xl font-bold flex-1">Skills</h1>
-          <button
+    <div className="h-full overflow-auto px-8 py-10" style={{ background: 'var(--color-bg-strong)' }}>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center mb-8">
+          <div className="w-10 h-10 grid place-items-center rounded-lg mr-3"
+               style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
+            <Sparkles size={20} />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold leading-tight">Skills</h1>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Reusable instruction packs — drop them into agents to specialise behaviour.
+            </p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ duration: 0.08 }}
             onClick={async () => {
               const name = await appPrompt('Skill name (kebab-case)?'); if (!name) return
               const created = await k.createSkill({ name, displayName: name, description: '', skillMd: `# ${name}\n\nWrite the skill here.\n` })
               setRefresh((n) => n + 1)
               store.open({ title: created.displayName ?? created.name, icon: '✨', view: { kind: 'skill', skillId: created.id } })
             }}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md font-medium text-white"
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-md font-medium text-white"
             style={{ background: 'var(--color-accent)' }}
-          ><Plus size={14} /> New skill</button>
+          ><Plus size={14} /> New skill</motion.button>
         </div>
 
         <SectionTitle>Own ({own.length})</SectionTitle>
-        <div className="grid md:grid-cols-2 gap-3 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           {own.map((s) => <Card key={s.id} skill={s} />)}
-          {own.length === 0 && <Empty msg="No skills yet." />}
+          {own.length === 0 && (
+            <div className="col-span-full rounded-xl p-8 text-center"
+                 style={{ background: 'var(--color-bg-soft)', border: '1px dashed var(--color-border)' }}>
+              <div className="text-3xl mb-2">✨</div>
+              <div className="text-sm font-medium mb-1">No skills yet.</div>
+              <div className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>
+                Skills are markdown packs of instructions. "New skill" to write your first.
+              </div>
+            </div>
+          )}
         </div>
 
         <SectionTitle>Installed ({installed.length})</SectionTitle>
-        <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {installed.map((s) => <Card key={s.id} skill={s} />)}
           {installed.length === 0 && <Empty msg="No installed skills. Browse the marketplace to add some." />}
         </div>
@@ -45,14 +66,41 @@ export function SkillsListView() {
 
 function Card({ skill }: { skill: Skill }) {
   return (
-    <button
+    <motion.button
       onClick={() => store.open({ title: skill.displayName ?? skill.name, icon: '✨', view: { kind: 'skill', skillId: skill.id } })}
-      className="text-left rounded-lg p-4 hover:shadow-md transition-shadow"
-      style={{ background: 'var(--color-bg-soft)', border: '1px solid var(--color-border)' }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
+      className="text-left rounded-xl p-4 flex flex-col gap-2"
+      style={{
+        background: 'var(--color-bg-soft)',
+        border: '1px solid var(--color-border)',
+        minHeight: 110,
+      }}
     >
-      <div className="font-semibold">{skill.displayName ?? skill.name}</div>
-      {skill.description && <div className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{skill.description.slice(0, 120)}</div>}
-    </button>
+      <div className="flex items-start gap-2.5">
+        <div className="w-9 h-9 grid place-items-center rounded-lg shrink-0 text-base"
+             style={{ background: 'var(--color-bg-strong)', border: '1px solid var(--color-border-soft)' }}>
+          ✨
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold truncate">{skill.displayName ?? skill.name}</div>
+          {skill.displayName && skill.displayName !== skill.name && (
+            <div className="text-[11px] mono mt-0.5 truncate" style={{ color: 'var(--color-text-subtle)' }}>
+              {skill.name}
+            </div>
+          )}
+        </div>
+      </div>
+      {skill.description ? (
+        <div className="text-xs line-clamp-3 leading-snug" style={{ color: 'var(--color-text-muted)' }}>
+          {skill.description}
+        </div>
+      ) : (
+        <div className="text-xs italic" style={{ color: 'var(--color-text-subtle)' }}>
+          No description.
+        </div>
+      )}
+    </motion.button>
   )
 }
 

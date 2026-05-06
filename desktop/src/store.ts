@@ -24,7 +24,7 @@ export type Tab = { id: string; title: string; icon?: string; view: ViewKind }
 export type RecentDoc = { id: string; title: string; icon?: string; openedAt: number }
 export type Theme = 'light' | 'dark'
 
-export type SidebarSection = 'docs' | 'databases' | 'ai' | 'sites'
+export type SidebarSection = 'docs' | 'databases' | 'sites'
 export type RightSection   = 'outline' | 'backlinks'
 
 type State = {
@@ -79,7 +79,14 @@ let state: State = {
   recentOpen: false,
   dockVisible:      persisted.dockVisible      ?? true,
   sidebarCollapsed: persisted.sidebarCollapsed ?? false,
-  sidebarSection:   persisted.sidebarSection   ?? 'docs',
+  // Migrate stale persisted 'ai' (the section was retired when Agents/Skills
+  // moved to the right rail) — fall through to 'docs' for those users.
+  sidebarSection:
+    (persisted.sidebarSection === 'docs' ||
+     persisted.sidebarSection === 'databases' ||
+     persisted.sidebarSection === 'sites')
+      ? persisted.sidebarSection
+      : 'docs',
   rightSection:     persisted.rightSection     ?? 'outline',
   theme:            persisted.theme            ?? 'light',
   navBack: [],

@@ -12,7 +12,7 @@
 import { motion } from 'motion/react'
 import {
   ArrowLeft, ArrowRight,
-  Calendar, Search, Sun, Moon, Cpu, Sparkles,
+  Calendar, Search, Sun, Moon,
 } from '../lib/icons'
 import { store, useStore } from '../store'
 import { k } from '../lib/mcp'
@@ -22,7 +22,6 @@ export function TitleBar() {
   const theme       = useStore((s) => s.theme)
   const navBackLen  = useStore((s) => s.navBack.length)
   const navFwdLen   = useStore((s) => s.navFwd.length)
-  const activeTabId = useStore((s) => s.activeTabId)
 
   return (
     <header
@@ -62,23 +61,10 @@ export function TitleBar() {
       {/* Drag handle */}
       <div className="flex-1 h-full" />
 
-      {/* Right cluster: quick tabs + actions
-         (Sidebar / Outline / Graph toggles all live on their respective rails;
-          dock visibility is in the status bar.) */}
+      {/* Right cluster: global actions only.
+         Agents/Skills moved to the right-rail in RightPanel; this top bar
+         is now strictly navigation + search + theme + window controls. */}
       <div className="flex items-center gap-0.5 no-drag">
-        <QuickTab
-          icon={<Cpu size={14} />}
-          label="Agents"
-          active={activeTabId === '{"kind":"agents"}'}
-          onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
-        />
-        <QuickTab
-          icon={<Sparkles size={14} />}
-          label="Skills"
-          active={activeTabId === '{"kind":"skills"}'}
-          onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
-        />
-        <Sep />
         <ChromeBtn title="Search (⌘K)" onClick={() => store.setSearchOpen(true)}>
           <Search size={15} />
         </ChromeBtn>
@@ -116,29 +102,6 @@ function ChromeBtn({
       }}
     >
       {children}
-    </motion.button>
-  )
-}
-
-function QuickTab({
-  icon, label, active, onClick,
-}: {
-  icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void
-}) {
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ y: -1 }}
-      transition={{ duration: 0.08 }}
-      className="flex items-center gap-1.5 h-7 px-2 rounded-md text-sm"
-      style={{
-        background: active ? 'var(--color-accent-soft)' : 'transparent',
-        color:      active ? 'var(--color-accent)'      : 'var(--color-text-muted)',
-        fontWeight: active ? 500 : 400,
-      }}
-    >
-      <span style={{ color: active ? 'var(--color-accent)' : 'var(--color-text-subtle)' }}>{icon}</span>
-      {label}
     </motion.button>
   )
 }

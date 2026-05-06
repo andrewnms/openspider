@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { ListTree, Link2, Network } from '../lib/icons'
+import { ListTree, Link2, Network, Cpu, Sparkles } from '../lib/icons'
 import { store, useStore } from '../store'
 import { useActiveEditor, useEditorTick } from '../lib/editorBus'
 import { k } from '../lib/mcp'
@@ -92,12 +92,20 @@ export function RightPanel() {
 }
 
 function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: string | null }) {
-  const graphActive = activeTab === '{"kind":"graph"}'
+  // Doc-context buttons toggle a panel section. Tab-launchers (Graph,
+  // Agents, Skills) open a workspace-level tab in the main pane — they
+  // don't have a side panel of their own. The visual state mirrors that:
+  // panel-section buttons highlight while their panel is open; tab-launcher
+  // buttons highlight while their tab is the active one.
+  const graphActive  = activeTab === '{"kind":"graph"}'
+  const agentsActive = activeTab === '{"kind":"agents"}'
+  const skillsActive = activeTab === '{"kind":"skills"}'
   return (
     <nav
       className="shrink-0 h-full flex flex-col items-center py-2"
       style={{ width: RAIL_WIDTH }}
     >
+      {/* Doc-context */}
       <RailBtn
         icon={<ListTree size={16} />}
         label="Outline"
@@ -113,6 +121,19 @@ function Rail({ rightSec, activeTab }: { rightSec: string | null; activeTab: str
 
       <div className="flex-1" />
 
+      {/* Workspace-level tab launchers */}
+      <RailBtn
+        icon={<Cpu size={16} />}
+        label="Agents"
+        active={agentsActive}
+        onClick={() => store.open({ title: 'Agents', icon: '🤖', view: { kind: 'agents' } })}
+      />
+      <RailBtn
+        icon={<Sparkles size={16} />}
+        label="Skills"
+        active={skillsActive}
+        onClick={() => store.open({ title: 'Skills', icon: '✨', view: { kind: 'skills' } })}
+      />
       <RailBtn
         icon={<Network size={16} />}
         label="Graph"
