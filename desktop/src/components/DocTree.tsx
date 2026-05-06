@@ -96,9 +96,13 @@ export function DocTree({ activeTabId, refreshTick }: {
   /** Move `draggedId` under `targetId` (or to root if `targetId` is null). */
   async function performMove(targetParentId: string | null) {
     const id = draggedIdRef.current
-    if (!id) return
-    if (id === targetParentId) return
-    if (targetParentId && descendantsOf.get(id)?.has(targetParentId)) return
+    if (!id) { console.warn('[doctree] performMove: no draggedId'); return }
+    if (id === targetParentId) { console.warn('[doctree] performMove: self-target'); return }
+    if (targetParentId && descendantsOf.get(id)?.has(targetParentId)) {
+      console.warn('[doctree] performMove: would create cycle', { id, targetParentId })
+      return
+    }
+    console.log('[doctree] performMove', { id, targetParentId })
     // Optimistic UI — flip the parent locally, then call the server.
     setDocs((xs) => xs.map((d) => d.id === id ? { ...d, parentId: targetParentId } : d))
     if (targetParentId) {
@@ -106,8 +110,14 @@ export function DocTree({ activeTabId, refreshTick }: {
         const next = new Set(prev); next.add(targetParentId); saveExpanded(next); return next
       })
     }
-    try { await k.moveDoc(id, targetParentId) }
-    catch (e) { console.error('move failed', e) /* could re-fetch to recover */ }
+    try {
+      const updated = await k.moveDoc(id, targetParentId)
+      console.log('[doctree] performMove ✓', updated)
+    } catch (e) {
+      console.error('[doctree] performMove failed', e)
+      // Re-fetch to undo the optimistic change since the server rejected it.
+      k.listAllDocs().then(setDocs).catch(() => {})
+    }
   }
 
   function isValidTarget(targetId: string): boolean {
@@ -125,7 +135,9 @@ export function DocTree({ activeTabId, refreshTick }: {
   }
 
   function onRootDragOver(e: React.DragEvent) {
-    if (!draggedIdRef.current) return
+    // Same fix as onDragOverRow — detect our drag via dataTransfer.types
+    // rather than the (potentially-stale) ref / state.
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDrop({ id: 'root', pos: 'into' })
@@ -140,7 +152,12 @@ export function DocTree({ activeTabId, refreshTick }: {
   }
 
   return (
-    <div onDragLeave={() => setDrop(null)}>
+    // No wrapper-level onDragLeave — that was firing on every move between
+    // rows (dragleave bubbles in browsers) and racing with onDragOver, which
+    // sometimes left `drop` as null exactly when the drop fired. We clear
+    // `drop` only on dragend (which always fires after a drag completes,
+    // success or cancel) and at the start of each new dragover.
+    <div>
       {tree.map((n) => (
         <NodeRow
           key={n.id}
@@ -155,8 +172,17 @@ export function DocTree({ activeTabId, refreshTick }: {
           onRename={rename}
           onMoveToRoot={moveToRoot}
           onDelete={remove}
-          onDragStart={(id) => setDraggedId(id)}
-          onDragEnd={() => { setDraggedId(null); setDrop(null) }}
+          onDragStart={(id) => {
+            // Update the ref *synchronously* so onValidateTarget can run on
+            // the very first dragover (before React commits the state).
+            draggedIdRef.current = id
+            setDraggedId(id)
+          }}
+          onDragEnd={() => {
+            draggedIdRef.current = null
+            setDraggedId(null)
+            setDrop(null)
+          }}
           onSetDrop={setDrop}
           onValidateTarget={isValidTarget}
           onPerformMove={performMove}
@@ -242,13 +268,22 @@ function NodeRow({
     onDragStart(node.id)
   }
   function onDragOverRow(e: React.DragEvent) {
-    if (!draggedId || !onValidateTarget(node.id)) return
+    // CRITICAL: detect our drag via dataTransfer.types, not the React
+    // `draggedId` prop. The prop is async state and may still be null on
+    // the very first dragover after dragstart (React hasn't re-rendered
+    // yet). dataTransfer.types is set synchronously at dragstart, so it's
+    // always up-to-date. Without preventDefault on dragover, the browser
+    // silently refuses the drop — this is the canonical drag-drop bug.
+    const isOurDrag = e.dataTransfer.types.includes(DRAG_MIME)
+    if (!isOurDrag) return
     e.preventDefault()
     e.stopPropagation()
+    if (!onValidateTarget(node.id)) {
+      e.dataTransfer.dropEffect = 'none'
+      return
+    }
     e.dataTransfer.dropEffect = 'move'
-    // Split the row into thirds to decide above / into / below — tighter
-    // edges (top/bottom 25%) than middle so "into" is the default for
-    // "I clearly hovered over this".
+    // Split the row into thirds: top/bottom 25% → sibling, middle 50% → child.
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const ratio = (e.clientY - r.top) / r.height
     const pos: DropPos = ratio < 0.25 ? 'above' : ratio > 0.75 ? 'below' : 'into'
@@ -258,11 +293,21 @@ function NodeRow({
     e.preventDefault()
     e.stopPropagation()
     if (!draggedId || !onValidateTarget(node.id)) {
+      console.warn('[doctree] drop rejected', { draggedId, target: node.id })
       onSetDrop(null); onDragEnd()
       return
     }
-    const pos: DropPos = myDrop ?? 'into'
+    // Compute the drop position FROM THE CURSOR Y at the moment of drop —
+    // not from React state which may be stale because dragover→drop fires in
+    // the same task and the re-render hasn't committed yet. This reads the
+    // actual geometry every time, no race.
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const ratio = (e.clientY - r.top) / r.height
+    const pos: DropPos = ratio < 0.25 ? 'above' : ratio > 0.75 ? 'below' : 'into'
     const targetParent = onResolveDropParent(node, pos)
+    console.log('[doctree] drop', {
+      draggedId, target: node.id, pos, targetParent,
+    })
     onSetDrop(null)
     await onPerformMove(targetParent)
     onDragEnd()
