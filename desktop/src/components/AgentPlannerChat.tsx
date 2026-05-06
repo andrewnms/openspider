@@ -31,7 +31,7 @@ type ChatRole = 'user' | 'assistant'
 type Msg = { role: ChatRole; content: string }
 type Mention = { docId: string; title: string }
 
-const PLANNER_SYSTEM = `You're an agent-design partner inside the OpenSpider Brain app.
+const PLANNER_SYSTEM_BASE = `You're an agent-design partner inside the OpenSpider Brain app.
 
 Your job: have a SHORT back-and-forth with the user to design one agent.
 Aim for 1–3 clarifying questions max before proposing a plan. Do NOT
@@ -48,17 +48,33 @@ Three modes are available, in order of preference:
   - "hybrid"  — JS that calls s16.ai(). Only when both clearly needed.
 
 Pick the cheapest mode that works. Do NOT pick "hybrid" if "prompt" alone
-would suffice. When you're ready to commit, end your message with a
-fenced JSON block like:
+would suffice.`
+
+const PLANNER_SCHEMA_NEW = `When you're ready to commit, end your message with a fenced JSON block:
+
+\`\`\`json
+{
+  "name": "...",                // SHORT, action-oriented
+  "description": "...",         // one line, what it does
+  "mode": "prompt" | "script" | "hybrid",
+  "model": "x-ai/grok-4-fast",
+  "systemPrompt": "...",        // for prompt + hybrid
+  "compiledScript": "..."       // for script + hybrid
+}
+\`\`\``
+
+const PLANNER_SCHEMA_EDIT = `When you're ready to commit, end your message with a fenced JSON block:
 
 \`\`\`json
 {
   "mode": "prompt" | "script" | "hybrid",
   "model": "x-ai/grok-4-fast",
-  "systemPrompt": "...",      // for prompt + hybrid
-  "compiledScript": "..."     // for script + hybrid
+  "systemPrompt": "...",        // for prompt + hybrid
+  "compiledScript": "..."       // for script + hybrid
 }
-\`\`\`
+\`\`\``
+
+const PLANNER_TAIL = `
 
 Only emit one JSON block when you're actually proposing a plan. While
 you're still asking questions, just write prose.
@@ -70,10 +86,12 @@ and a \`context\` object. Return any JSON-serialisable value.`
 export function AgentPlannerChat({
   agent, onClose, onApplied,
 }: {
-  agent: Agent
+  /** Existing agent to refine, or `null` to design + create one from scratch. */
+  agent: Agent | null
   onClose: () => void
   onApplied: (updated: Agent, mode: Mode) => void
 }) {
+  const isNew = agent === null
   const [docs, setDocs] = useState<Doc[]>([])
   const [messages, setMessages] = useState<Msg[]>(() => seed(agent))
   const [draft, setDraft]     = useState('')
@@ -139,8 +157,11 @@ export function AgentPlannerChat({
     setStreaming(true); setStreamBuf('')
     try {
       let acc = ''
+      const sys = PLANNER_SYSTEM_BASE +
+        '\n\n' + (isNew ? PLANNER_SCHEMA_NEW : PLANNER_SCHEMA_EDIT) +
+        PLANNER_TAIL
       const full = await streamChat(
-        [{ role: 'system', content: PLANNER_SYSTEM },
+        [{ role: 'system', content: sys },
          ...next.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))],
         (delta) => { acc += delta; setStreamBuf(acc) },
       )
@@ -167,13 +188,28 @@ export function AgentPlannerChat({
     if (!latestPlan) return
     setApplying(true)
     try {
-      const patch: Partial<Agent> = {}
-      if (latestPlan.systemPrompt   !== undefined) patch.systemPrompt   = latestPlan.systemPrompt
-      if (latestPlan.compiledScript !== undefined) patch.compiledScript = latestPlan.compiledScript
-      if (latestPlan.model)                        patch.model          = latestPlan.model
-      const updated = await k.updateAgent(agent.id, patch)
-      const mode: Mode = latestPlan.mode ?? inferMode(updated)
-      onApplied(updated, mode)
+      let saved: Agent
+      if (isNew) {
+        // Plan must include a name when creating from scratch — fall back to
+        // a placeholder rather than failing if the model forgot.
+        saved = await k.createAgent({
+          name:           latestPlan.name        ?? 'Untitled agent',
+          description:    latestPlan.description ?? '',
+          model:          latestPlan.model       ?? 'x-ai/grok-4-fast',
+          systemPrompt:   latestPlan.systemPrompt ?? '',
+          compiledScript: latestPlan.compiledScript ?? '',
+        })
+      } else {
+        const patch: Partial<Agent> = {}
+        if (latestPlan.name           !== undefined) patch.name           = latestPlan.name
+        if (latestPlan.description    !== undefined) patch.description    = latestPlan.description
+        if (latestPlan.systemPrompt   !== undefined) patch.systemPrompt   = latestPlan.systemPrompt
+        if (latestPlan.compiledScript !== undefined) patch.compiledScript = latestPlan.compiledScript
+        if (latestPlan.model)                         patch.model          = latestPlan.model
+        saved = await k.updateAgent(agent!.id, patch)
+      }
+      const mode: Mode = latestPlan.mode ?? inferMode(saved)
+      onApplied(saved, mode)
       onClose()
     } finally { setApplying(false) }
   }
@@ -214,7 +250,9 @@ export function AgentPlannerChat({
             <Sparkles size={15} />
           </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold">Plan agent · {agent.name}</div>
+            <div className="text-sm font-semibold">
+              {isNew ? 'Design a new agent' : `Plan agent · ${agent!.name}`}
+            </div>
             <div className="text-[11px]" style={{ color: 'var(--color-text-subtle)' }}>
               Chat to design it. Use <code className="mono">@</code> to attach docs as context.
             </div>
@@ -368,7 +406,7 @@ function Bubble({
   streaming?: boolean
   isLatest?: boolean
   showApply?: boolean
-  plan?: { mode?: Mode; systemPrompt?: string; compiledScript?: string } | null
+  plan?: { name?: string; mode?: Mode; systemPrompt?: string; compiledScript?: string } | null
   applying?: boolean
   onApply?: () => void
 }) {
@@ -407,6 +445,7 @@ function Bubble({
             <div className="text-[11px] uppercase tracking-wider font-semibold mb-1"
                  style={{ color: 'var(--color-accent)' }}>Plan ready</div>
             <div className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
+              {plan.name && <><span className="font-semibold" style={{ color: 'var(--color-text)' }}>{plan.name}</span> · </>}
               <span className="mono">mode: {plan.mode ?? 'prompt'}</span>
               {plan.systemPrompt && <> · prompt {plan.systemPrompt.length} ch</>}
               {plan.compiledScript && <> · script {plan.compiledScript.length} ch</>}
@@ -428,7 +467,15 @@ function Bubble({
 
 /* ────────── helpers ────────── */
 
-function seed(agent: Agent): Msg[] {
+function seed(agent: Agent | null): Msg[] {
+  if (agent === null) {
+    // Create-from-scratch: skip the intro, jump straight to the prompt that
+    // shows the user where to start typing. The assistant's first turn
+    // doubles as a placeholder/guide.
+    return [
+      { role: 'assistant', content: "What should this agent do? Describe it in your own words — I'll help you name it, pick the right mode (just-LLM, just-script, or hybrid), and write the prompt or code. Mention existing docs with **@** if you want me to pattern-match an example." },
+    ]
+  }
   const intro = agent.description?.trim()
     ? `I'd like to design an agent called **${agent.name}**.\n\nWhat I have so far: ${agent.description}`
     : `I'd like to design an agent called **${agent.name}**. I haven't written a description yet.`
@@ -439,6 +486,7 @@ function seed(agent: Agent): Msg[] {
 }
 
 function extractPlan(raw: string): {
+  name?: string; description?: string;
   mode?: Mode; model?: string;
   systemPrompt?: string; compiledScript?: string;
 } | null {
@@ -464,13 +512,14 @@ function inferMode(agent: Agent): Mode {
 
 export function AgentPlannerChatHost(props: {
   open: boolean
+  /** Pass an Agent to refine, or `null` to design + create one. */
   agent: Agent | null
   onClose: () => void
-  onApplied: (updated: Agent, mode: Mode) => void
+  onApplied: (saved: Agent, mode: Mode) => void
 }) {
   return (
     <AnimatePresence>
-      {props.open && props.agent && (
+      {props.open && (
         <AgentPlannerChat
           agent={props.agent}
           onClose={props.onClose}

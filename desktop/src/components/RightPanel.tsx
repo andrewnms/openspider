@@ -183,14 +183,11 @@ function PanelHeader({ section }: { section: 'outline' | 'backlinks' | 'agents' 
   )
 }
 
-async function createAgent() {
-  const name = await appPrompt('Agent name?'); if (!name) return
-  const created = await k.createAgent({
-    name,
-    model: 'x-ai/grok-4-fast',
-    compiledScript: 's16.log("hello!"); return { ok: true };',
-  })
-  store.open({ title: created.name, icon: '🤖', view: { kind: 'agent', agentId: created.id } })
+function createAgent() {
+  // Open the chat planner in "create from scratch" mode. The conversation
+  // derives the name + description + plan; on apply, the planner host
+  // calls k.createAgent and opens the agent's tab.
+  window.dispatchEvent(new CustomEvent('os:open-agent-planner', { detail: null }))
 }
 async function createSkill() {
   const name = await appPrompt('Skill name (kebab-case)?'); if (!name) return

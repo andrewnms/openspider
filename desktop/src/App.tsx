@@ -25,6 +25,8 @@ import { SettingsView } from './views/SettingsView'
 import { GraphView } from './views/GraphView'
 import { CardsView } from './views/CardsView'
 import { ImportView } from './views/ImportView'
+import { AgentPlannerChatHost } from './components/AgentPlannerChat'
+import type { Agent } from './lib/mcp'
 
 export default function App() {
   const tabs        = useStore((s) => s.tabs)
@@ -108,7 +110,39 @@ export default function App() {
       <DialogHost />
       <WorkspacePicker />
       <ToastHost />
+      <GlobalAgentPlanner />
     </div>
+  )
+}
+
+/** App-level agent planner host. Any caller opens it by dispatching:
+ *    window.dispatchEvent(new CustomEvent('os:open-agent-planner', { detail: agent | null }))
+ *  Detail is the existing agent to refine, or `null` to design from scratch.
+ *  On apply, opens the (new or refined) agent's tab automatically. */
+function GlobalAgentPlanner() {
+  const [open, setOpen]   = useState(false)
+  const [agent, setAgent] = useState<Agent | null>(null)
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail as Agent | null | undefined
+      setAgent(detail ?? null)
+      setOpen(true)
+    }
+    window.addEventListener('os:open-agent-planner', onOpen)
+    return () => window.removeEventListener('os:open-agent-planner', onOpen)
+  }, [])
+  return (
+    <AgentPlannerChatHost
+      open={open}
+      agent={agent}
+      onClose={() => setOpen(false)}
+      onApplied={(saved, mode) => {
+        store.open({ title: saved.name, icon: '🤖', view: { kind: 'agent', agentId: saved.id } })
+        window.dispatchEvent(new CustomEvent('os:toast', {
+          detail: agent === null ? `Created ${saved.name}` : `Planned as ${mode}`,
+        }))
+      }}
+    />
   )
 }
 

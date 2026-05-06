@@ -30,15 +30,15 @@ export function AgentsListView() {
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             transition={{ duration: 0.08 }}
-            onClick={async () => {
-              const name = await appPrompt('Agent name?'); if (!name) return
-              // Default to prompt-mode for new agents — most users want LLM
-              // behaviour first, not codegen. The agent view's "Plan with AI"
-              // button can promote to script/hybrid when it's actually
-              // warranted by the description.
-              const created = await k.createAgent({ name, model: 'x-ai/grok-4-fast', systemPrompt: '' })
-              setRefresh((n) => n + 1)
-              store.open({ title: created.name, icon: '🤖', view: { kind: 'agent', agentId: created.id } })
+            onClick={() => {
+              // Route through the chat planner — design + name + create in
+              // one flow. The global GlobalAgentPlanner host opens the new
+              // agent's tab automatically on apply.
+              window.dispatchEvent(new CustomEvent('os:open-agent-planner', { detail: null }))
+              // Refresh the list when the planner closes (covers both
+              // applied and cancelled cases).
+              const refreshOnce = () => { setRefresh((n) => n + 1); window.removeEventListener('focus', refreshOnce) }
+              window.addEventListener('focus', refreshOnce)
             }}
             className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-md font-medium text-white"
             style={{ background: 'var(--color-accent)' }}
